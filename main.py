@@ -400,38 +400,38 @@ async def help_command(ctx):
         )
 
     while True:
-    try:
-        reaction, user = await bot.wait_for(
-            "reaction_add",
-            timeout=60,
-            check=check
-        )
-
-        if str(reaction.emoji) == "➡️":
-            current_page += 1
-
-            if current_page >= len(embed_pages):
-                current_page = 0
-
-        elif str(reaction.emoji) == "⬅️":
-            current_page -= 1
-
-            if current_page < 0:
-                current_page = len(embed_pages) - 1
-
-        await msg.edit(
-            embed=discord.Embed(
-                description=embed_pages[current_page],
-                color=0x808080
+        try:
+            reaction, user = await bot.wait_for(
+                "reaction_add",
+                timeout=60,
+                check=check
             )
-        )
 
-        await msg.remove_reaction(reaction.emoji, user)
+            if str(reaction.emoji) == "➡️":
+                current_page += 1
 
-    except asyncio.TimeoutError:
-        await msg.clear_reactions()
-        break
+                if current_page >= len(embed_pages):
+                    current_page = 0
 
+            elif str(reaction.emoji) == "⬅️":
+                current_page -= 1
+
+                if current_page < 0:
+                    current_page = len(embed_pages) - 1
+
+            await msg.edit(
+                embed=discord.Embed(
+                    description=embed_pages[current_page],
+                    color=0x808080
+                )
+            )
+
+            await msg.remove_reaction(reaction.emoji, user)
+
+        except asyncio.TimeoutError:
+            await msg.clear_reactions()
+            break
+                    
 @bot.command()
 async def fake(ctx, user: discord.Member, *, message: str):
     try:
