@@ -17,9 +17,11 @@ import aiohttp
 prefix = ">"
 intents = discord.Intents.all()
 
-bot = commands.Bot(command_prefix=prefix, intents=intents)
+intents = discord.Intents.all()
 intents.messages = True
 intents.reactions = True
+
+bot = commands.Bot(command_prefix=prefix, intents=intents)
 
 token = os.getenv("TOKEN")
 
@@ -28,16 +30,16 @@ mute_end_times = {}
 #BAN_REASON_FILE = "ban_reasons.json"
 
 
-def load_ban_reasons():
-    if not os.path.exists(BAN_REASON_FILE):
-        return {}
-    with open(BAN_REASON_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+#def load_ban_reasons():
+#    if not os.path.exists(BAN_REASON_FILE):
+#        return {}
+#    with open(BAN_REASON_FILE, "r", encoding="utf-8") as f:
+#        return json.load(f)
 
 
-def save_ban_reasons(data):
-    with open(BAN_REASON_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+#def save_ban_reasons(data):
+#    with open(BAN_REASON_FILE, "w", encoding="utf-8") as f:
+#        json.dump(data, f, ensure_ascii=False, indent=4)
 
 
 bot.remove_command("help")
@@ -109,7 +111,7 @@ async def emoji(ctx):
 
 @bot.command()
 async def meo(ctx):
-    async with aiohttp.botSession() as session:
+    async with aiohttp.ClientSession() as session:
         async with session.get("https://api.thecatapi.com/v1/images/search") as resp:
             if resp.status != 200:
                 await ctx.send("**😿 Không lấy được ảnh mèo!**")
@@ -1223,13 +1225,13 @@ async def showhiddenvoice(ctx):
                 )
     await ctx.send(f"**Đã hoàn thành:** {len(danhsach_voice)} **kênh ẩn**")
 
+token = os.getenv("TOKEN")
+
 if token is None:
-    print("Không tìm thấy token!")
+    print("❌ Không tìm thấy TOKEN!")
 else:
+    print("✅ TOKEN đã được tìm thấy!")
     bot.run(token)
-    
-print(token)
-bot.run(token)
 
 # @bot.command()
 # async def translate(ctx, source_lang: str, target_lang: str, *, text: str):
