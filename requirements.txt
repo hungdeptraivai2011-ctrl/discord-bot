@@ -1,2 +1,6 @@
 discord.py
 colorama
+deep-translator
+langdetect
+aiohttp
+flask
