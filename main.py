@@ -1222,6 +1222,12 @@ async def showhiddenvoice(ctx):
                     f"**[Hidden]** {voice_channel.name} : **\n - - - {ten_thanh_vien}**"
                 )
     await ctx.send(f"**Đã hoàn thành:** {len(danhsach_voice)} **kênh ẩn**")
+
+if token is None:
+    print("Không tìm thấy token!")
+else:
+    bot.run(token)
+    
 print(token)
 bot.run(token)
 
