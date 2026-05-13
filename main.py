@@ -319,69 +319,118 @@ async def remove_role(ctx, member: discord.Member = None, *, role: discord.Role 
 #     )
 #     await message.send(embed=embed)
 
+@bot.command(name="help")
+async def help_command(ctx):
 
-@bot.command()
-async def help(message):
     embed_pages = [
         (
             "**COMMAND SUPPORT:**\n"
             "------------------------------------------------\n"
-            "=> __***Lệnh dành cho `Member` và `Administrator`:***__\n"
-            "* :one: `>meo`\n * **random ảnh mèo**\n"
-            "* :two: `>meme_meo`\n * **random meme mèo**\n"
-            "* :three: `>ping`\n - **kiểm tra độ trễ giữa máy chủ Discord và máy tính**\n"
-            "* :four: `>tinh 'số thứ nhất' 'số thứ hai'`\n * **Máy tính toán**\n"
-            "* :five: `>random 'member' 'phần thưởng'`\n * **member: Thành viên muốn random**\n - **phần thưởng: Món quà muốn tặng (ko cần cũng được)**\n"
-            "* :six: `>translate 'ngôn ngữ đầu vào' 'ngôn ngữ đầu ra' 'văn bản`'\n * **ngôn ngữ đầu vào: Ngôn ngữ chính**\n - **ngôn ngữ đầu ra: Ngôn ngữ cần dịch**\n - **văn bản: Văn bản muốn dịch**\n"
-            "* :seven: `>languages`\n * **hỗ trợ ngôn ngữ cho lệnh traslate**\n"
-            "### 1/2"
+            "=> __***Lệnh dành cho `Member` và `Administrator`:***__\n\n"
+
+            ":one: `>meo`\n"
+            "• random ảnh mèo\n\n"
+
+            ":two: `>meme_meo`\n"
+            "• random meme mèo\n\n"
+
+            ":three: `>ping`\n"
+            "• kiểm tra độ trễ giữa máy chủ Discord và máy tính\n\n"
+
+            ":four: `>tinh 'số thứ nhất' 'số thứ hai'`\n"
+            "• Máy tính toán\n\n"
+
+            ":five: `>random 'member' 'phần thưởng'`\n"
+            "• member: Thành viên muốn random\n"
+            "• phần thưởng: Món quà muốn tặng\n\n"
+
+            ":six: `>translate 'ngôn ngữ đầu vào' 'ngôn ngữ đầu ra' 'văn bản'`\n"
+            "• Dịch văn bản\n\n"
+
+            ":seven: `>languages`\n"
+            "• hỗ trợ ngôn ngữ cho lệnh translate\n\n"
+
+            "**Trang 1/2**"
         ),
+
         (
-            "=> __***Lệnh dành cho `Administrator`:***__\n"
-            "* :one: `>userinfo 'member'`\n * **member: Thành viên muốn xem thông tin**\n    **(nếu ko có thành viên muốn xem thông thì thông tin sẽ là người dùng lệnh)**\n"
-            "* :two: `>kick 'member' 'reason'`\n * **member: Tên thành viên muốn kick**\n - **reason: Lý do kick**\n"
-            "* :three: `>ban 'member' 'reason'`\n * **member: Tên thành viên muốn ban**\n - **reason: Lý do ban**\n"
-            "* :four: `>unban 'member' 'reason'`\n * **member: Tên thành viên muốn unban**\n - **reason: Lý do unban**\n"
-            "* :five: `>add_role 'member' 'role'`\n * **member: Tên thành viên muốn app role**\n - **role: Role muốn thêm**\n"
-            "* :six: `>remove_role 'member' 'role'`\n * **member: Tên thành viên muốn remove role**\n - **role: Role muốn xóa**\n"
-            "### 2/2"
-        ),
+            "=> __***Lệnh dành cho `Administrator`:***__\n\n"
+
+            ":one: `>userinfo 'member'`\n"
+            "• xem thông tin member\n\n"
+
+            ":two: `>kick 'member' 'reason'`\n"
+            "• kick thành viên\n\n"
+
+            ":three: `>ban 'member' 'reason'`\n"
+            "• ban thành viên\n\n"
+
+            ":four: `>unban 'member' 'reason'`\n"
+            "• unban thành viên\n\n"
+
+            ":five: `>add_role 'member' 'role'`\n"
+            "• thêm role cho member\n\n"
+
+            ":six: `>remove_role 'member' 'role'`\n"
+            "• xóa role khỏi member\n\n"
+
+            "**Trang 2/2**"
+        )
     ]
 
-    page_reactions = ["⬅️", "➡️"]
     current_page = 0
 
-    msg = await message.send(
-        embed=discord.Embed(description=embed_pages[current_page], color=0x808080)
+    embed = discord.Embed(
+        description=embed_pages[current_page],
+        color=0x808080
     )
 
-    for reaction in page_reactions:
+    msg = await ctx.send(embed=embed)
+
+    reactions = ["⬅️", "➡️"]
+
+    for reaction in reactions:
         await msg.add_reaction(reaction)
 
     def check(reaction, user):
-        return user == message.author and str(reaction.emoji) in page_reactions
+        return (
+            user == ctx.author
+            and reaction.message.id == msg.id
+            and str(reaction.emoji) in reactions
+        )
 
     while True:
         try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=60, check=check)
-
-            if str(reaction.emoji) == "➡️" and current_page < len(embed_pages) - 1:
-                current_page += 1
-            elif str(reaction.emoji) == "⬅️" and current_page > 0:
-                current_page -= 1
-            elif str(reaction.emoji) == "⬅️" and current_page == 0:
-                current_page = len(embed_pages) - 1
-
-            await msg.edit(
-                embed=discord.Embed(
-                    description=embed_pages[current_page], color=0x808080
-                )
+            reaction, user = await bot.wait_for(
+                "reaction_add",
+                timeout=60,
+                check=check
             )
-            await msg.remove_reaction(reaction, user)
+
+            if str(reaction.emoji) == "➡️":
+                current_page += 1
+
+                if current_page >= len(embed_pages):
+                    current_page = 0
+
+            elif str(reaction.emoji) == "⬅️":
+                current_page -= 1
+
+                if current_page < 0:
+                    current_page = len(embed_pages) - 1
+
+            new_embed = discord.Embed(
+                description=embed_pages[current_page],
+                color=0x808080
+            )
+
+            await msg.edit(embed=new_embed)
+
+            await msg.remove_reaction(reaction.emoji, user)
 
         except asyncio.TimeoutError:
+            await msg.clear_reactions()
             break
-
 
 @bot.command()
 async def fake(ctx, user: discord.Member, *, message: str):
