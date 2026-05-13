@@ -4,3 +4,4 @@ deep-translator
 langdetect
 aiohttp
 flask
+dotenv
