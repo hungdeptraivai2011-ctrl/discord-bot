@@ -46,6 +46,9 @@ bot.remove_command("help")
 
 YOUR_USER_ID = 1209454073913286667
 
+@bot.event
+async def on_ready():
+    print(f"Online: {bot.user}")
 
 @bot.event
 async def on_ready():
