@@ -21,7 +21,7 @@ bot = commands.Bot(command_prefix=prefix, intents=intents)
 intents.messages = True
 intents.reactions = True
 
-token = os.environ.get("DISCORD_TOKEN", "")
+token = os.getenv("TOKEN")
 
 mute_end_times = {}
 
