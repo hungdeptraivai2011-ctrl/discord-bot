@@ -1328,7 +1328,6 @@ async def showhiddenvoice(ctx):
                 )
     await ctx.send(f"**Đã hoàn thành:** {len(danhsach_voice)} **kênh ẩn**")
 
-keep_alive()
 bot.run(token)
 
 # @bot.command()
