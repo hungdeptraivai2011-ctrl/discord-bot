@@ -12,7 +12,10 @@ import os
 import time
 import platform
 import aiohttp
+from dotenv import load_dotenv
 
+load_dotenv()
+token = os.getenv("TOKEN")
 
 prefix = ">"
 intents = discord.Intents.all()
@@ -22,8 +25,6 @@ intents.messages = True
 intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
-
-token = os.getenv("TOKEN")
 
 mute_end_times = {}
 
