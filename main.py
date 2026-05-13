@@ -25,7 +25,7 @@ token = os.getenv("TOKEN")
 
 mute_end_times = {}
 
-BAN_REASON_FILE = "ban_reasons.json"
+#BAN_REASON_FILE = "ban_reasons.json"
 
 
 def load_ban_reasons():
@@ -239,110 +239,6 @@ async def kick(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
         )
     except Exception as e:
         print(f"Đã xảy ra lỗi: {e}")
-
-
-@bot.command()
-async def ban(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
-    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.ban_members:
-        await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
-        return
-
-    if member is None:
-        await ctx.send(
-            "```>ban 'member' 'reason'\n      ^^^^^^   ^^^^^\n^ là chỗ cần điền```"
-        )
-        return
-
-    if member.bot:
-        await ctx.send("**Lệnh này không thể ban bot!**")
-        return
-
-    bot_top_role = ctx.guild.me.top_role
-    if bot_top_role.position <= member.top_role.position:
-        await ctx.send("**Bot không thể ban thành viên này!**")
-        return
-
-    try:
-        await ctx.send(f"{member.mention} **đã bị cấm** | **lý do**: `{reason}`")
-        await member.send(f"Bạn đã bị **cấm** khỏi **Server** | lý do: `{reason}`")
-        await member.ban(reason=reason)
-
-        reasons = load_ban_reasons()
-        reasons[str(member.id)] = reason
-        save_ban_reasons(reasons)
-
-    except discord.Forbidden:
-        await ctx.send(
-            "**Tôi không thể gửi tin nhắn cho thành viên này. Tuy nhiên, họ vẫn bị ban khỏi server.**"
-        )
-    except Exception as e:
-        print(f"Đã xảy ra lỗi: {e}")
-
-
-@bot.command()
-async def unban(ctx, member_id: str, *, unban_reason=None):
-    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.ban_members:
-        await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
-        return
-
-    # Xử lý nếu nhập mention
-    if member_id.startswith("<@") and member_id.endswith(">"):
-        member_id = member_id[2:-1]
-        if member_id.startswith("!"):
-            member_id = member_id[1:]
-
-    try:
-        member_id = int(member_id)
-    except ValueError:
-        await ctx.send("**ID thành viên không hợp lệ!**")
-        return
-
-    try:
-        banned_users = [entry async for entry in ctx.guild.bans()]
-        member = discord.utils.find(lambda u: u.user.id == member_id, banned_users)
-
-        if member is None:
-            await ctx.send(
-                "**Không tìm thấy thành viên với ID này trong danh sách bị cấm!**"
-            )
-            return
-
-        # Lấy lý do ban từ file (nếu có)
-        reasons = load_ban_reasons()
-        ban_reason = reasons.get(str(member_id), "Không có lý do")
-
-        # Nếu không có lý do unban được nhập, thì dùng mặc định
-        final_unban_reason = (
-            unban_reason or f"Không có lý do | Trước đó bị cấm với lý do: {ban_reason}"
-        )
-
-        # Unban và thông báo
-        await ctx.guild.unban(member.user, reason=final_unban_reason)
-        await ctx.send(
-            f"{member.user.mention} **đã được bỏ cấm** | **lý do**: `{final_unban_reason}`"
-        )
-
-        try:
-            await member.user.send(
-                f"**Bạn đã được bỏ cấm khỏi server `{ctx.guild.name}`**\n"
-                f"👉 Lý do unban: `{final_unban_reason}`"
-            )
-        except discord.Forbidden:
-            await ctx.send(
-                "**Tôi không thể gửi tin nhắn cho thành viên này. Tuy nhiên, họ đã được bỏ cấm khỏi server!**"
-            )
-
-        # Xoá lý do ban sau khi unban
-        if str(member_id) in reasons:
-            del reasons[str(member_id)]
-            save_ban_reasons(reasons)
-
-    except discord.Forbidden:
-        await ctx.send("**Tôi không có quyền bỏ cấm thành viên này!**")
-    except Exception as e:
-        await ctx.send(f"Đã xảy ra lỗi: {e}")
-        print(f"Đã xảy ra lỗi: {e}")
-
 
 @bot.command()
 async def add_role(ctx, member: discord.Member = None, *, role: discord.Role = None):
