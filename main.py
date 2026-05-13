@@ -319,9 +319,6 @@ async def remove_role(ctx, member: discord.Member = None, *, role: discord.Role 
 #     )
 #     await message.send(embed=embed)
 
-import discord
-from discord.ext import commands
-
 class HelpPaginator(discord.ui.View):
     def __init__(self, pages):
         super().__init__(timeout=60)  # Tự động đóng sau 60s
