@@ -3,7 +3,6 @@ from discord.ext import commands
 from colorama import Fore, Back, Style
 from deep_translator import GoogleTranslator
 from langdetect import detect
-from keep_alive import keep_alive
 import datetime
 import random as rand
 import asyncio
@@ -13,7 +12,7 @@ import os
 import time
 import platform
 import aiohttp
-# from dotenv import load_dotenv
+
 
 prefix = ">"
 intents = discord.Intents.all()
