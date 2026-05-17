@@ -34,6 +34,7 @@ chat_histories = {}
 warnings = {}
 
 LOG_CHANNEL_ID = 1505527971883126844
+ALLOWED_GUILD_ID = 1505460695410671797
 #BAN_REASON_FILE = "ban_reasons.json"
 
 
@@ -186,114 +187,80 @@ bad_words = [
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
+    # Bỏ qua nếu là bot hoặc chat trong DM
+    if message.author.bot or not message.guild:
         return
-    # BỎ QUA ADMIN / MOD
-    if (
-message.author.guild_permissions.administrator
-        or message.author.guild_permissions.manage_messages
-        or message.author.guild_permissions.manage_guild
-    ):
+
+    # Chỉ hoạt động trong server được chỉ định
+    if message.guild.id != ALLOWED_GUILD_ID:
+        return
+
+    # Bỏ qua nếu là Admin hoặc có quyền quản lý tin nhắn
+    perms = message.author.guild_permissions
+    if perms.administrator or perms.manage_messages or perms.manage_guild:
+        await bot.process_commands(message)
+        return
+
+    # Bỏ qua nếu thuộc các Role đặc quyền
+    ignore_roles = {"Staff", "Admin", "Mod"}
+    if any(role.name in ignore_roles for role in message.author.roles):
+        await bot.process_commands(message)
         return
 
     msg = message.content.lower()
 
-    # CHECK BAD WORDS
-    if any(word in msg for word in bad_words):
+    # CHECK BAD WORDS (Sử dụng Regex để tránh chặn nhầm các từ như "ngủ", "nguồn")
+    is_bad = False
+    for word in bad_words:
+        # Tạo pattern tìm kiếm từ độc lập, không nằm trong từ khác
+        pattern = r'\b' + re.escape(word) + r'\b'
+        if re.search(pattern, msg):
+            is_bad = True
+            break
 
+    if is_bad:
         try:
             await message.delete()
-        except:
+        except discord.Forbidden:
+            print("Bot thiếu quyền xóa tin nhắn!")
+        except discord.NotFound:
             pass
 
         user_id = message.author.id
-
-        if user_id not in warnings:
-            warnings[user_id] = 0
-
-        warnings[user_id] += 1
-
+        warnings[user_id] = warnings.get(user_id, 0) + 1
         warn_count = warnings[user_id]
 
-        # LOG CHANNEL
+        # Gửi LOG vào channel quản lý
         log_channel = bot.get_channel(LOG_CHANNEL_ID)
-
         if log_channel:
-            embed = discord.Embed(
-                title="**🚫 Vi phạm chửi thề**",
-                color=discord.Color.red()
-            )
-
-            embed.add_field(
-                name="**👤 Người dùng**",
-                value=f"{message.author} ({message.author.id})",
-                inline=False
-            )
-
-            embed.add_field(
-                name="**💬 Tin nhắn**",
-                value=message.content,
-                inline=False
-            )
-
-            embed.add_field(
-                name="**⚠ Số lần vi phạm**",
-                value=str(warn_count),
-                inline=False
-            )
-
-            embed.add_field(
-                name="**📍 Kênh**",
-                value=message.channel.mention,
-                inline=False
-            )
-
+            embed = discord.Embed(title="🚫 Vi phạm từ cấm", color=discord.Color.red())
+            embed.add_field(name="👤 Người dùng", value=f"{message.author.mention} (`{message.author.id}`)", inline=False)
+            embed.add_field(name="💬 Tin nhắn gốc", value=message.content, inline=False)
+            embed.add_field(name="⚠ Số lần vi phạm", value=f"**{warn_count}**", inline=False)
+            embed.add_field(name="📍 Kênh", value=message.channel.mention, inline=False)
             await log_channel.send(embed=embed)
 
-        # WARNING
+        # Xử lý hình phạt theo số lần vi phạm
         if warn_count == 1:
-
-            warning = await message.channel.send(
-                f"**{message.author.mention} ⚠ Cảnh báo lần 1: Không được chửi thề!**"
-            )
-
+            warning = await message.channel.send(f"{message.author.mention} ⚠ Cảnh báo: Vui lòng không sử dụng từ ngữ thô tục!")
             await warning.delete(delay=5)
 
-        # TIMEOUT
         elif warn_count == 2:
-
             try:
-
-                await message.author.timeout(
-                    timedelta(minutes=10),
-                    reason="**Chửi thề nhiều lần**"
-                )
-
-                await message.channel.send(
-                    f"**{message.author.mention} ⏳ Đã bị timeout 10 phút vì tiếp tục chửi thề!**"
-                )
-
+                await message.author.timeout(timedelta(minutes=10), reason="Chửi thề lần 2")
+                await message.channel.send(f"{message.author.mention} ⏳ Bạn đã bị tạm lặng (Timeout) **10 phút** vì tiếp tục vi phạm!")
             except Exception as e:
-                print(e)
+                print(f"Không thể timeout: {e}")
 
-        # KICK
         elif warn_count >= 3:
-
             try:
-
-                await message.author.kick(
-                    reason="**Tiếp tục chửi thề sau timeout**"
-                )
-
-                await message.channel.send(
-                    f"👢 **{message.author} đã bị kick khỏi server!**"
-                )
-
+                await message.author.kick(reason="Vi phạm từ cấm quá 3 lần")
+                await message.channel.send(f"👢 **{message.author}** đã bị trục xuất (Kick) khỏi server vì cố tình vi phạm nhiều lần!")
             except Exception as e:
-                print(e)
-
+                print(f"Không thể kick: {e}")
         return
 
+    # Xử lý các lệnh prefix (!) nếu không vi phạm từ cấm
     await bot.process_commands(message)
 
 @bot.command()
