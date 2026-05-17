@@ -13,6 +13,7 @@ import time
 import platform
 import aiohttp
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 token = os.getenv("TOKEN")
@@ -28,6 +29,11 @@ bot = commands.Bot(command_prefix=prefix, intents=intents)
 
 mute_end_times = {}
 
+chat_histories = {}
+
+warnings = {}
+
+LOG_CHANNEL_ID = 1505527971883126844
 #BAN_REASON_FILE = "ban_reasons.json"
 
 
@@ -89,6 +95,206 @@ async def on_command_error(ctx, error):
     else:
         print(f"🚫 Lỗi không xác định: {error}")
 
+bad_words = [
+
+    # Chửi phổ biến
+    "địt", "dit", "djt", "đjt",
+    "đụ", "du", "đụ má", "du ma",
+    "đéo", "deo", "đếch", "dech",
+    "dm", "dmm", "đm", "dmk", "dmn",
+    "vcl", "vl", "vkl", "vloz",
+    "vãi", "vai", "vãi l", "vailon",
+
+    # Bộ phận cơ thể
+    "cặc", "cak", "cac",
+    "cu", "chim", "buồi", "buoi",
+    "lồn", "lon", "cl", "cailon",
+    "dái", "zái",
+    "cứt", "cut",
+    "đái", "ỉa",
+
+    # Xúc phạm
+    "ngu",
+    "ngu lol",
+    "ngu l",
+    "óc chó",
+    "oc cho",
+    "thiểu năng",
+    "súc vật",
+    "suc vat",
+    "chó chết",
+    "con chó",
+    "thằng chó",
+    "con điên",
+    "thằng điên",
+    "khốn nạn",
+    "óc l",
+    "óc c",
+    "rác rưởi",
+    "phế vật",
+    "vô dụng",
+
+    # Chửi gia đình
+    "mẹ mày",
+    "me may",
+    "bố mày",
+    "bo may",
+    "ông già mày",
+    "cả nhà mày",
+    "tổ sư",
+    "tiên sư",
+    "mả mẹ",
+    "con mẹ mày",
+
+    # Toxic game/chat
+    "trash",
+    "dog",
+    "ez",
+    "noob",
+    "gà",
+    "óc",
+    "brain dead",
+    "retard",
+
+    # Biến thể bypass
+    "d!t",
+    "d1t",
+    "djtme",
+    "d m",
+    "đ m",
+    "v l",
+    "c c",
+    "l o n",
+    "c a c",
+    "d e o",
+
+    # Tiếng Anh
+    "fuck",
+    "fck",
+    "shit",
+    "bitch",
+    "asshole",
+    "motherfucker",
+    "mf",
+    "bastard",
+    "dick",
+    "pussy",
+    "slut",
+    "whore",
+
+]
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    # BỎ QUA ADMIN / MOD
+    if (
+message.author.guild_permissions.administrator
+        or message.author.guild_permissions.manage_messages
+        or message.author.guild_permissions.manage_guild
+    ):
+        return
+
+    msg = message.content.lower()
+
+    # CHECK BAD WORDS
+    if any(word in msg for word in bad_words):
+
+        try:
+            await message.delete()
+        except:
+            pass
+
+        user_id = message.author.id
+
+        if user_id not in warnings:
+            warnings[user_id] = 0
+
+        warnings[user_id] += 1
+
+        warn_count = warnings[user_id]
+
+        # LOG CHANNEL
+        log_channel = bot.get_channel(LOG_CHANNEL_ID)
+
+        if log_channel:
+            embed = discord.Embed(
+                title="**🚫 Vi phạm chửi thề**",
+                color=discord.Color.red()
+            )
+
+            embed.add_field(
+                name="**👤 Người dùng**",
+                value=f"{message.author} ({message.author.id})",
+                inline=False
+            )
+
+            embed.add_field(
+                name="**💬 Tin nhắn**",
+                value=message.content,
+                inline=False
+            )
+
+            embed.add_field(
+                name="**⚠ Số lần vi phạm**",
+                value=str(warn_count),
+                inline=False
+            )
+
+            embed.add_field(
+                name="**📍 Kênh**",
+                value=message.channel.mention,
+                inline=False
+            )
+
+            await log_channel.send(embed=embed)
+
+        # WARNING
+        if warn_count == 1:
+
+            warning = await message.channel.send(
+                f"**{message.author.mention} ⚠ Cảnh báo lần 1: Không được chửi thề!**"
+            )
+
+            await warning.delete(delay=5)
+
+        # TIMEOUT
+        elif warn_count == 2:
+
+            try:
+
+                await message.author.timeout(
+                    timedelta(minutes=10),
+                    reason="**Chửi thề nhiều lần**"
+                )
+
+                await message.channel.send(
+                    f"**{message.author.mention} ⏳ Đã bị timeout 10 phút vì tiếp tục chửi thề!**"
+                )
+
+            except Exception as e:
+                print(e)
+
+        # KICK
+        elif warn_count >= 3:
+
+            try:
+
+                await message.author.kick(
+                    reason="**Tiếp tục chửi thề sau timeout**"
+                )
+
+                await message.channel.send(
+                    f"👢 **{message.author} đã bị kick khỏi server!**"
+                )
+
+            except Exception as e:
+                print(e)
+
+        return
+
+    await bot.process_commands(message)
 
 @bot.command()
 async def ping(ctx):
