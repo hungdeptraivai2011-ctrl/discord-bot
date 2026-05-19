@@ -52,7 +52,7 @@ ALLOWED_GUILD_ID = 1505460695410671797
 
 bot.remove_command("help")
 
-YOUR_USER_ID = 1209454073913286667
+YOUR_USER_ID = 1195361246195757118
 
 @bot.event
 async def on_ready():
@@ -539,12 +539,12 @@ async def help_command(ctx):
             ":six: `>remove_role`: Xóa vai trò"
         )
     ]
-    
+
     view = HelpPaginator(pages)
     embed = discord.Embed(description=pages[0], color=0x808080)
     view.message = await ctx.send(embed=embed, view=view)
 
-                    
+
 @bot.command()
 async def fake(ctx, user: discord.Member, *, message: str):
     try:
