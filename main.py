@@ -190,7 +190,9 @@ async def on_message(message):
     # Bỏ qua nếu là bot hoặc chat trong DM
     if message.author.bot or not message.guild:
         return
-
+    
+    await handle_greetings(message)
+    
     # Chỉ hoạt động trong server được chỉ định
     if message.guild.id != ALLOWED_GUILD_ID:
         return
@@ -864,14 +866,6 @@ async def handle_greetings(message):
         await message.channel.send(embed=embed)
     elif message.content.lower() == "sex":
         await message.channel.send(f"não bọn mày toàn sex với vú ko à?")
-
-
-@bot.event
-async def on_message(message):
-    if not message.author.bot:
-        await handle_greetings(message)
-    await bot.process_commands(message)
-
 
 @bot.command(aliases=["uinfo", "whois"])
 async def userinfo(ctx, member: discord.Member = None):
