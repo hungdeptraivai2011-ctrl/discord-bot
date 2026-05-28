@@ -56,10 +56,6 @@ YOUR_USER_ID = 1195361246195757118
 
 @bot.event
 async def on_ready():
-    print(f"Online: {bot.user}")
-
-@bot.event
-async def on_ready():
     prfx = (
         Back.BLACK
         + Fore.GREEN
@@ -184,26 +180,26 @@ bad_words = [
     "whore",
 
 ]
-
 @bot.event
 async def on_message(message):
-    # Bỏ qua nếu là bot hoặc chat trong DM
+    # Bỏ qua bot và DM
     if message.author.bot or not message.guild:
         return
-    
+
+    # Xử lý chào hỏi
     await handle_greetings(message)
-    
-    # Chỉ hoạt động trong server được chỉ định
+
+    # Nếu khác server cho phép thì vẫn xử lý command
     if message.guild.id != ALLOWED_GUILD_ID:
+        await bot.process_commands(message)
         return
 
-    # Bỏ qua nếu là Admin hoặc có quyền quản lý tin nhắn
+    # Bỏ qua admin/mod
     perms = message.author.guild_permissions
     if perms.administrator or perms.manage_messages or perms.manage_guild:
         await bot.process_commands(message)
         return
 
-    # Bỏ qua nếu thuộc các Role đặc quyền
     ignore_roles = {"Staff", "Admin", "Mod"}
     if any(role.name in ignore_roles for role in message.author.roles):
         await bot.process_commands(message)
@@ -211,10 +207,10 @@ async def on_message(message):
 
     msg = message.content.lower()
 
-    # CHECK BAD WORDS (Sử dụng Regex để tránh chặn nhầm các từ như "ngủ", "nguồn")
+    # CHECK BAD WORDS
     is_bad = False
+
     for word in bad_words:
-        # Tạo pattern tìm kiếm từ độc lập, không nằm trong từ khác
         pattern = r'\b' + re.escape(word) + r'\b'
         if re.search(pattern, msg):
             is_bad = True
@@ -422,7 +418,7 @@ async def kick(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
         print(f"Đã xảy ra lỗi: {e}")
 
 @bot.command()
-async def add_role(ctx, member: discord.Member = None, *, role: discord.Role = None):
+async def add_role(ctx, member: discord.Member = None, role: discord.Role = None):
     if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.manage_roles:
         await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
         return
