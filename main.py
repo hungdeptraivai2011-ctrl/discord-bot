@@ -102,7 +102,7 @@ async def get_player(user_id):
     return await create_player(user_id)
 
 
-async def await await await save_player(player):
+async def save_player(player):
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
 
