@@ -187,7 +187,7 @@ async def roll(ctx, amount: int):
         player["lose_streak"] = 0
         player["xp"] += 25
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
