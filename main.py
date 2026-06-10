@@ -412,7 +412,8 @@ class UpgradeView(discord.ui.View):
 
     @discord.ui.button(
         label="🍀 Nâng Luck",
-        style=discord.ButtonStyle.green
+        style=discord.ButtonStyle.green,
+        custom_id="upgrade_luck"
     )
     async def upgrade_luck(
         self,
@@ -442,7 +443,8 @@ class UpgradeView(discord.ui.View):
 
     @discord.ui.button(
         label="💎 Nâng Jackpot",
-        style=discord.ButtonStyle.blurple
+        style=discord.ButtonStyle.blurple,
+        custom_id="upgrade_jackpot"
     )
     async def upgrade_jackpot(
         self,
