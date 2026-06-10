@@ -210,7 +210,7 @@ async def roll(ctx, amount: int):
         player["lose_streak"] = 0
         player["xp"] += 10
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -229,7 +229,7 @@ async def roll(ctx, amount: int):
         player["lose_streak"] += 1
         player["xp"] += 5
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -300,7 +300,7 @@ async def slot(ctx, amount: int):
             f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
         )
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -318,7 +318,7 @@ async def slot(ctx, amount: int):
         player["lose_streak"] = 0
         player["xp"] += 25
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -336,7 +336,7 @@ async def slot(ctx, amount: int):
         player["lose_streak"] = 0
         player["xp"] += 15
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -354,7 +354,7 @@ async def slot(ctx, amount: int):
         player["lose_streak"] = 0
         player["xp"] += 10
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
@@ -379,7 +379,7 @@ async def slot(ctx, amount: int):
         player["lose_streak"] += 1
         player["xp"] += 5
 
-        await await save_player(player)
+        await save_player(player)
 
         return await msg.edit(
             content=
