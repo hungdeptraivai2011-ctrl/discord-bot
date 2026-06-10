@@ -408,7 +408,7 @@ class UpgradeView(discord.ui.View):
         button: discord.ui.Button
     ):
 
-        player = get_player(interaction.user.id)
+        player = await get_player(interaction.user.id)
 
         cost = (player["luck"] + 1) * 1000
 
@@ -438,7 +438,7 @@ class UpgradeView(discord.ui.View):
         button: discord.ui.Button
     ):
 
-        player = get_player(interaction.user.id)
+        player = await get_player(interaction.user.id)
 
         cost = (player["jackpot"] + 1) * 2000
 
