@@ -17,6 +17,27 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 
+players = {}
+
+def get_player(user_id):
+    user_id = str(user_id)
+
+    if user_id not in players:
+        players[user_id] = {
+            "cash": 1000,
+            "xp": 0,
+            "level": 1,
+            "luck": 0,
+            "jackpot": 0,
+            "lose_streak": 0
+        }
+
+    return players[user_id]
+
+
+def save_player(player):
+    pass
+
 @bot.command()
 async def roll(ctx, amount: int):
     if amount <= 0:
