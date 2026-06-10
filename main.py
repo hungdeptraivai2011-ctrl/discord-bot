@@ -1,6 +1,19 @@
 import random
 import asyncio
 from discord.ext import commands
+from dotenv import load_dotenv
+
+load_dotenv()
+token = os.getenv("TOKEN")
+
+prefix = ">"
+intents = discord.Intents.all()
+
+intents = discord.Intents.all()
+intents.messages = True
+intents.reactions = True
+
+bot = commands.Bot(command_prefix=prefix, intents=intents)
 
 @bot.command()
 async def roll(ctx, amount: int):
@@ -106,3 +119,11 @@ async def roll(ctx, amount: int):
             f"💸 -{amount:,} Cash\n"
             f"🔥 Chuỗi thua: {player['lose_streak']}"
         )
+
+token = os.getenv("TOKEN")
+
+if token is None:
+    print("❌ Không tìm thấy TOKEN!")
+else:
+    print("✅ TOKEN đã được tìm thấy!")
+    bot.run(token)
