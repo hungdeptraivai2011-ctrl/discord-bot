@@ -288,6 +288,140 @@ async def slot(ctx, amount: int):
             f"🔥 Chuỗi thua: {player['lose_streak']}"
         )
 
+import discord
+from discord.ext import commands
+
+# ===== Buttons =====
+
+class UpgradeView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="🍀 Nâng Luck",
+        style=discord.ButtonStyle.green
+    )
+    async def upgrade_luck(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        player = get_player(interaction.user.id)
+
+        cost = (player["luck"] + 1) * 1000
+
+        if player["cash"] < cost:
+            return await interaction.response.send_message(
+                f"❌ Cần {cost:,} Cash",
+                ephemeral=True
+            )
+
+        player["cash"] -= cost
+        player["luck"] += 1
+
+        save_player(interaction.user.id, player)
+
+        await interaction.response.send_message(
+            f"🍀 Luck đã tăng lên {player['luck']}",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="💎 Nâng Jackpot",
+        style=discord.ButtonStyle.blurple
+    )
+    async def upgrade_jackpot(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        player = get_player(interaction.user.id)
+
+        cost = (player["jackpot"] + 1) * 2000
+
+        if player["cash"] < cost:
+            return await interaction.response.send_message(
+                f"❌ Cần {cost:,} Cash",
+                ephemeral=True
+            )
+
+        player["cash"] -= cost
+        player["jackpot"] += 1
+
+        save_player(interaction.user.id, player)
+
+        await interaction.response.send_message(
+            f"💎 Jackpot đã tăng lên {player['jackpot']}",
+            ephemeral=True
+        )
+
+
+# ===== START COMMAND =====
+
+@bot.command()
+async def start(ctx):
+
+    player = get_player(ctx.author.id)
+
+    need_xp = player["level"] * 100
+
+    embed = discord.Embed(
+        title="🎮 THÔNG TIN NGƯỜI CHƠI",
+        color=discord.Color.gold()
+    )
+
+    embed.set_author(
+        name=str(ctx.author),
+        icon_url=ctx.author.display_avatar.url
+    )
+
+    embed.add_field(
+        name="💰 Cash",
+        value=f"{player['cash']:,}",
+        inline=True
+    )
+
+    embed.add_field(
+        name="⭐ Level",
+        value=player["level"],
+        inline=True
+    )
+
+    embed.add_field(
+        name="📈 XP",
+        value=f"{player['xp']}/{need_xp}",
+        inline=True
+    )
+
+    embed.add_field(
+        name="🍀 Luck",
+        value=player["luck"],
+        inline=True
+    )
+
+    embed.add_field(
+        name="💎 Jackpot",
+        value=player["jackpot"],
+        inline=True
+    )
+
+    embed.add_field(
+        name="🔥 Chuỗi thua",
+        value=player["lose_streak"],
+        inline=True
+    )
+
+    embed.set_footer(
+        text="Nhấn nút bên dưới để nâng cấp chỉ số"
+    )
+
+    await ctx.send(
+        embed=embed,
+        view=UpgradeView()
+    )
+
 token = os.getenv("TOKEN")
 
 if token is None:
