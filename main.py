@@ -421,7 +421,7 @@ class UpgradeView(discord.ui.View):
         player["cash"] -= cost
         player["luck"] += 1
 
-        save_player(interaction.user.id, player)
+        await save_player(player)
 
         await interaction.response.send_message(
             f"🍀 Luck đã tăng lên {player['luck']}",
@@ -451,7 +451,7 @@ class UpgradeView(discord.ui.View):
         player["cash"] -= cost
         player["jackpot"] += 1
 
-        save_player(interaction.user.id, player)
+        await save_player(player)
 
         await interaction.response.send_message(
             f"💎 Jackpot đã tăng lên {player['jackpot']}",
