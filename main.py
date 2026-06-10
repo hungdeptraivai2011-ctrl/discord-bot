@@ -84,13 +84,13 @@ async def on_command_error(ctx, error):
         )
         await ctx.send(embed=embed)
 
-        print(f"🚫 Lỗi: Lệnh `{ctx.message.content}` không tồn tại.")
+        print(f"⚠️ | Lỗi: Lệnh `{ctx.message.content}` không tồn tại.")
 
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"⚠️ **Lỗi: Thiếu đối số yêu cầu cho lệnh** `{ctx.command}`.")
-        print(f"🚫 Lỗi: Thiếu đối số yêu cầu cho lệnh {ctx.command}.")
+        await ctx.send(f"⚠️ | **Lỗi: Thiếu đối số yêu cầu cho lệnh** `{ctx.command}`.")
+        print(f"⚠️ | Lỗi: Thiếu đối số yêu cầu cho lệnh {ctx.command}.")
     else:
-        print(f"🚫 Lỗi không xác định: {error}")
+        print(f"⚠️ | Lỗi không xác định: {error}")
 
 bad_words = [
 
@@ -246,16 +246,16 @@ async def on_message(message):
         elif warn_count == 2:
             try:
                 await message.author.timeout(timedelta(minutes=10), reason="Chửi thề lần 2")
-                await message.channel.send(f"{message.author.mention} ⏳ Bạn đã bị tạm lặng (Timeout) **10 phút** vì tiếp tục vi phạm!")
+                await message.channel.send(f"{message.author.mention} ⏳ Bạn đã bị Timeout **10 phút** vì tiếp tục vi phạm!")
             except Exception as e:
-                print(f"Không thể timeout: {e}")
+                print(f"❌ | Không thể timeout: {e}")
 
         elif warn_count >= 3:
             try:
                 await message.author.kick(reason="Vi phạm từ cấm quá 3 lần")
-                await message.channel.send(f"👢 **{message.author}** đã bị trục xuất (Kick) khỏi server vì cố tình vi phạm nhiều lần!")
+                await message.channel.send(f"👢 **{message.author}** đã bị Kick khỏi server vì cố tình vi phạm nhiều lần!")
             except Exception as e:
-                print(f"Không thể kick: {e}")
+                print(f"❌ | Không thể kick: {e}")
         return
 
     # Xử lý các lệnh prefix (!) nếu không vi phạm từ cấm
@@ -270,12 +270,6 @@ async def ping(ctx):
 @bot.command()
 async def hello(ctx):
     await ctx.send("hello!")
-
-
-@bot.command()
-async def server(ctx):
-    await ctx.send("**Server của tôi:**\nhttps://discord.gg/cJ3eBMvkby")
-
 
 @bot.command()
 async def emoji(ctx):
@@ -298,49 +292,6 @@ async def meo(ctx):
             embed = discord.Embed(title="**🌸 Mèo cute:**", color=pink)
             embed.set_image(url=image_url)
             await ctx.send(embed=embed)
-
-
-# @bot.command()
-# async def meo(ctx):
-#     image_urls = [
-#     "https://tse1.mm.bing.net/th?id=OIP.HqHq_40zUO40sXt-I1LpVAHaJQ&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.Y9MaxiVxV-8HnzG7MuNC3wHaE8&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.5ugk7qGj0hcpwsfY0QMl3AHaHa&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.gc53sbg6ZQK7Bw9AgfnUMQHaL2&pid=Api&P=0&h=220",
-#     "https://tse4.explicit.bing.net/th?id=OIP.kp8cgwjkuj2cqMF71u93MAHaEK&pid=Api&P=0&h=220",
-#     "https://tse3.explicit.bing.net/th?id=OIP.74s89yGiTJ9Y-ptW-msSwAHaHa&pid=Api&P=0&h=220",
-#     "https://tse1.mm.bing.net/th?id=OIP.KdRE7KHqL-46M8nrvOX2CgHaHa&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.RVd_tWA4X6z1D6PkcaQSawHaFk&pid=Api&P=0&h=220",
-#     "https://tse4.mm.bing.net/th?id=OIP.QEZ5ajvXDiiBpvQzf2XyHwHaHa&pid=Api&P=0&h=220",
-#     "https://tse3.mm.bing.net/th?id=OIP.Fb9TlA92Z8VTbWXSNfvWIAHaHa&pid=Api&P=0&h=220",
-#     "https://tse1.mm.bing.net/th?id=OIP.qdq4A5NN-sndDV9lvxNZOwHaHH&pid=Api&P=0&h=220",
-#     "https://tse3.mm.bing.net/th?id=OIP.ctIStdz_4ZGcT5GCzx0ttgHaNK&pid=Api&P=0&h=220",
-#     "https://tse3.explicit.bing.net/th?id=OIP.iMG3CK7nCkVlcLXGG5dqXwHaJ4&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.Cdm86CJYnCUROjPy9iXs1AHaE8&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.Kx9JN7Lg8gie0QNxzkoqzAHaIC&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.bhFafTC6FKECib5E-_e74gHaHa&pid=Api&P=0&h=220",
-#     "https://tse2.mm.bing.net/th?id=OIP.E1bMqGOkt1lb3b5JftaOzgHaHa&pid=Api&P=0&h=220",
-#     "https://tse2.explicit.bing.net/th?id=OIP.SUJl86Owb7cfRlLFK-p2QgHaE_&pid=Api&P=0&h=220",
-#     "https://tse3.mm.bing.net/th?id=OIP.AquKN4BupIn-P8h7rz-F1wHaEo&pid=Api&P=0&h=220",
-#     "https://tse3.explicit.bing.net/th?id=OIP.s3IqxnvKmSV8QJcAvupC7gHaH5&pid=Api&P=0&h=220",
-#     "https://tse1.explicit.bing.net/th?id=OIP.-eh5biFTbFG2w9IznNK_MQHaHa&pid=Api&P=0&h=220",
-#     "https://tse1.explicit.bing.net/th?id=OIP.QgSiaFLQIfJEPFD-gvgTpwHaHa&pid=Api&P=0&h=220",
-#     "https://tse4.explicit.bing.net/th?id=OIP.z-qNGKYdV95LU3UiVBlgrAHaHa&pid=Api&P=0&h=220",
-#     "https://tse4.explicit.bing.net/th?id=OIP.SggdzJqd1MzO1WKVDdnzTgHaHa&pid=Api&P=0&h=220",
-#     ]
-
-#     rand_image_url = rand.choice(image_urls)
-
-#     if not rand_image_url.startswith("http"):
-#         await ctx.send("Đã xảy ra lỗi!")
-#         return
-
-#     color = discord.Color.from_rgb(255, 192, 203)
-
-#     embed = discord.Embed(description=f"**ẢNH MÈO CUTE:**\n[url hình ảnh]({rand_image_url})", color=color)
-#     embed.set_image(url=rand_image_url)
-#     await ctx.channel.send(embed=embed)
-
 
 @bot.command()
 async def meme_meo(ctx):
@@ -388,7 +339,11 @@ async def meme_meo(ctx):
 @bot.command()
 async def kick(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
     if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.kick_members:
-        await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
+        await ctx.send("**❌ | Bạn không có quyền thực hiện hành động này!**")
+        return
+
+    if ctx.author.top_role <= member.top_role and ctx.author.id != YOUR_USER_ID:
+        await ctx.send("**❌ | Bạn không thể kick người có role cao hơn hoặc bằng bạn!**")
         return
 
     if member is None:
@@ -398,7 +353,15 @@ async def kick(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
         return
 
     if member.bot:
-        await ctx.send("**Lệnh này không thể kick bot!**")
+        await ctx.send("**❌ | Lệnh này không thể kick bot!**")
+        return
+
+    if member == ctx.author:
+        await ctx.send("**❌ | Bạn không thể tự kick chính mình!**")
+        return
+
+    if member == ctx.guild.owner:
+        await ctx.send("**❌ | Không thể kick chủ server!**")
         return
 
     bot_top_role = ctx.guild.me.top_role
@@ -407,20 +370,113 @@ async def kick(ctx, member: discord.Member = None, *, reason="Ko có lý do"):
         return
 
     try:
-        await ctx.send(f"{member.mention} **đã bị đá** | reason: {reason}")
-        await member.send(f"Bạn đã bị **đá** khỏi **Server** | reason: {reason}")
+        try:
+            await member.send(
+                f"Bạn đã bị **đá** khỏi **{ctx.guild.name}** | reason: {reason}"
+            )
+        except discord.Forbidden:
+            pass
+
         await member.kick(reason=reason)
-    except discord.Forbidden:
         await ctx.send(
-            "**Tôi không thể gửi tin nhắn cho thành viên này. Tuy nhiên, họ vẫn bị kick khỏi server.**"
+            f"{member.mention} **đã bị đá khỏi server** | reason: {reason}"
         )
+
+    except discord.Forbidden:
+        await ctx.send("**❌ | Bot không có quyền kick thành viên này!**")
+
     except Exception as e:
-        print(f"Đã xảy ra lỗi: {e}")
+        await ctx.send(f"**❌ | Đã xảy ra lỗi:** `{e}`")
+
+@bot.command()
+async def ban(ctx, member: discord.Member = None, *, reason="Không có lý do"):
+    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.ban_members:
+        await ctx.send("**❌ | Bạn không có quyền thực hiện hành động này!**")
+        return
+
+    if member is None:
+        await ctx.send(
+            "```>ban 'member' 'reason'\n      ^^^^^^   ^^^^^\n^ là chỗ cần điền```"
+        )
+        return
+
+    if member.bot:
+        await ctx.send("**❌ | Không thể ban bot!**")
+        return
+
+    if member == ctx.author:
+        await ctx.send("**❌ | Bạn không thể tự ban chính mình!**")
+        return
+
+    if member == ctx.guild.owner:
+        await ctx.send("**❌ | Không thể ban chủ server!**")
+        return
+
+    if ctx.author.id != YOUR_USER_ID:
+        if ctx.author.top_role <= member.top_role:
+            await ctx.send(
+                "**❌ | Bạn không thể ban người có role cao hơn hoặc bằng bạn!**"
+            )
+            return
+
+    if ctx.guild.me.top_role <= member.top_role:
+        await ctx.send("**❌ | Bot không thể ban thành viên này!**")
+        return
+
+    try:
+        try:
+            await member.send(
+                f"Bạn đã bị **ban** khỏi **{ctx.guild.name}** | Lý do: {reason}"
+            )
+        except discord.Forbidden:
+            pass
+
+        await member.ban(reason=reason)
+
+        await ctx.send(
+            f"✅ | {member.mention} **đã bị ban khỏi server** | Lý do: {reason}"
+        )
+
+    except discord.Forbidden:
+        await ctx.send("**❌ | Bot không có quyền ban thành viên này!**")
+
+    except Exception as e:
+        await ctx.send(f"**⚠️ | Đã xảy ra lỗi:** `{e}`")
+
+@bot.command()
+async def unban(ctx, user_id: int = None):
+    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.ban_members:
+        await ctx.send("**❌ | Bạn không có quyền sử dụng lệnh này!**")
+        return
+
+    if user_id is None:
+        await ctx.send(
+            "```>unban 'user_id'\n        ^^^^^^^\n^ ID người dùng cần gỡ ban```"
+        )
+        return
+
+    try:
+        user = await bot.fetch_user(user_id)
+
+        await ctx.guild.unban(user)
+
+        await ctx.send(
+            f"✅ | **Đã gỡ ban thành công**: {user} (`{user.id}`)"
+        )
+
+    except discord.NotFound:
+        await ctx.send("**❌ | Người dùng này không nằm trong danh sách ban!**")
+
+    except discord.Forbidden:
+        await ctx.send("**❌ | Bot không có quyền gỡ ban!**")
+
+    except Exception as e:
+        await ctx.send(f"**⚠️ | Đã xảy ra lỗi:** `{e}`")
 
 @bot.command()
 async def add_role(ctx, member: discord.Member = None, role: discord.Role = None):
     if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.manage_roles:
-        await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
+        await ctx.send("**❌ | Bạn không có quyền thực hiện hành động này!**")
         return
 
     if member is None or role is None:
@@ -431,19 +487,19 @@ async def add_role(ctx, member: discord.Member = None, role: discord.Role = None
 
     try:
         await member.add_roles(role)
-        await ctx.send(f"{member.mention} **đã được thêm role**")
+        await ctx.send(f"✅ | {member.mention} **đã được thêm role**")
     except discord.Forbidden:
-        await ctx.send("**Bot không có đủ quyền hạn để thêm role cho thành viên!**")
+        await ctx.send("**❌ | Bot không có đủ quyền hạn để thêm role cho thành viên!**")
     except discord.HTTPException:
-        await ctx.send("**Đã xảy ra lỗi khi thêm role cho thành viên!**")
+        await ctx.send("**⚠️ | Đã xảy ra lỗi khi thêm role cho thành viên!**")
     except Exception as e:
-        print(f"Đã xảy ra lỗi: {e}")
+        print(f"⚠️ | Đã xảy ra lỗi: {e}")
 
 
 @bot.command()
 async def remove_role(ctx, member: discord.Member = None, *, role: discord.Role = None):
     if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.manage_roles:
-        await ctx.send("**Bạn không có quyền thực hiện hành động này!**")
+        await ctx.send("**❌ | Bạn không có quyền thực hiện hành động này!**")
         return
 
     if member is None or role is None:
@@ -456,39 +512,11 @@ async def remove_role(ctx, member: discord.Member = None, *, role: discord.Role 
         await member.remove_roles(role)
         await ctx.send(f"{member.mention} **đã bị xóa role**")
     except discord.Forbidden:
-        await ctx.send("**Bot không có đủ quyền hạn để xóa role của thành viên!**")
+        await ctx.send("**❌ | Bot không có đủ quyền hạn để xóa role của thành viên!**")
     except discord.HTTPException:
-        await ctx.send("**Đã xảy ra lỗi khi xóa role của thành viên!**")
+        await ctx.send("**⚠️ | Đã xảy ra lỗi khi xóa role của thành viên!**")
     except Exception as e:
-        print(f"Đã xảy ra lỗi: {e}")
-
-
-# @bot.command()
-# async def help(message):
-#     embed = discord.Embed(
-#         title="**COMMAND SUPPORT:**",
-#         description=(
-#             "------------------------------------------------\n"
-#             "=> __***Lệnh dành cho `Member` và `Administrator`:***__\n"
-#             "* `>meo`\n * **random ảnh mèo**\n"
-#             "* `>meme_meo`\n * **random meme mèo**\n"
-#             "* `>ping`\n - **kiểm tra độ trễ giữa máy chủ Discord và máy tính**\n"
-#             "* `>tinh 'số thứ nhất' 'số thứ hai'`\n * **Máy tính toán**\n"
-#             "* `>random 'member' 'phần thưởng'`\n * **member: Thành viên muốn random**\n - **phần thưởng: Món quà muốn tặng (ko cần cũng được)**\n"
-#             "* `>translate 'ngôn ngữ đầu vào' 'ngôn ngữ đầu ra' 'văn bản`'\n * **ngôn ngữ đầu vào: Ngôn ngữ chính**\n - **ngôn ngữ đầu ra: Ngôn ngữ cần dịch**\n - **văn bản: Văn bản muốn dịch**\n"
-#             "* `>languages`\n * **hỗ trợ ngôn ngữ cho lệnh traslate**\n"
-#             "------------------------------------------------\n"
-#             "=> __***Lệnh dành cho `Administrator`:***__\n"
-#             "* `>userinfo 'member'`\n * **member: Thành viên muốn xem thông tin**\n    **(nếu ko có thành viên muốn xem thông thì thông tin sẽ là người dùng lệnh)**\n"
-#             "* `>kick 'member' 'reason'`\n * **member: Tên thành viên muốn kick**\n - **reason: Lý do kick**\n"
-#             "* `>ban 'member' 'reason'`\n * **member: Tên thành viên muốn ban**\n - **reason: Lý do ban**\n"
-#             "* `>unban 'member' 'reason'`\n * **member: Tên thành viên muốn unban**\n - **reason: Lý do unban**\n"
-#             "* `>add_role 'member' 'role'`\n * **member: Tên thành viên muốn app role**\n - **role: Role muốn thêm**\n"
-#             "* `>remove_role 'member' 'role'`\n * **member: Tên thành viên muốn remove role**\n - **role: Role muốn xóa**"
-#         ),
-#         color=0x808080
-#     )
-#     await message.send(embed=embed)
+        print(f"⚠️ | Đã xảy ra lỗi: {e}")
 
 class HelpPaginator(discord.ui.View):
     def __init__(self, pages):
@@ -517,24 +545,23 @@ async def help_command(ctx):
             "**COMMAND SUPPORT (Trang 1/2):**\n"
             "------------------------------------------------\n"
             "=> __***Lệnh cho Member & Admin:***__\n\n"
-            ":one: `>meo`: Random ảnh mèo\n"
-            ":two: `>meme_meo`: Random meme mèo\n"
-            ":three: `>ping`: Kiểm tra độ trễ\n"
-            ":four: `>tinh [a] [b]`: Máy tính toán\n"
-            ":five: `>random [member] [quà]`: Tặng quà ngẫu nhiên\n"
-            ":six: `>translate [in] [out] [text]`: Dịch văn bản\n"
-            ":seven: `>languages`: Danh sách ngôn ngữ"
+            ":one:* `>meo`\n * **random ảnh mèo**\n"
+            ":two:* `>meme_meo`\n * **random meme mèo**\n"
+            ":three:* `>ping`\n - **kiểm tra độ trễ giữa máy chủ Discord và máy tính**\n"
+            ":four:* `>tinh 'số thứ nhất' 'số thứ hai'`\n * **Máy tính toán**\n"
+            ":five:* `>random 'member' 'phần thưởng'`\n * **member: Thành viên muốn random**\n - **phần thưởng: Món quà muốn tặng (ko cần cũng được)**\n"
+            ":six:* `>translate 'ngôn ngữ đầu vào' 'ngôn ngữ đầu ra' 'văn bản`'\n * **ngôn ngữ đầu vào: Ngôn ngữ chính**\n - **ngôn ngữ đầu ra: Ngôn ngữ cần dịch**\n - **văn bản: Văn bản muốn dịch**\n"
+            ":seven:* `>languages`\n * **hỗ trợ ngôn ngữ cho lệnh traslate**\n"
         ),
         (
             "**COMMAND SUPPORT (Trang 2/2):**\n"
-            "------------------------------------------------\n"
-            "=> __***Lệnh cho Administrator:***__\n\n"
-            ":one: `>userinfo`: Thông tin thành viên\n"
-            ":two: `>kick`: Đuổi thành viên\n"
-            ":three: `>ban`: Cấm thành viên\n"
-            ":four: `>unban`: Gỡ cấm\n"
-            ":five: `>add_role`: Thêm vai trò\n"
-            ":six: `>remove_role`: Xóa vai trò"
+            "=> __***Lệnh dành cho `Administrator`:***__\n"
+            ":one:* `>userinfo 'member'`\n * **member: Thành viên muốn xem thông tin**\n    **(nếu ko có thành viên muốn xem thông thì thông tin sẽ là người dùng lệnh)**\n"
+            ":two:* `>kick 'member' 'reason'`\n * **member: Tên thành viên muốn kick**\n - **reason: Lý do kick**\n"
+            ":three:* `>ban 'member' 'reason'`\n * **member: Tên thành viên muốn ban**\n - **reason: Lý do ban**\n"
+            ":four:* `>unban 'member' 'reason'`\n * **member: Tên thành viên muốn unban**\n - **reason: Lý do unban**\n"
+            ":five:* `>add_role 'member' 'role'`\n * **member: Tên thành viên muốn app role**\n - **role: Role muốn thêm**\n"
+            ":six:* `>remove_role 'member' 'role'`\n * **member: Tên thành viên muốn remove role**\n - **role: Role muốn xóa**"
         )
     ]
 
@@ -866,7 +893,7 @@ async def handle_greetings(message):
 @bot.command(aliases=["uinfo", "whois"])
 async def userinfo(ctx, member: discord.Member = None):
 
-    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.manage_guild:
+    if ctx.author.id != YOUR_USER_ID and not ctx.author.guild_permissions.manage_messages:
         await ctx.send("**❌ | Bạn không có quyền sử dụng lệnh này.**")
         return
 
