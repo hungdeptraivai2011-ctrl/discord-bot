@@ -38,7 +38,8 @@ player_cache = {}
 
 @bot.event
 async def on_ready():
-
+    bot.add_view(UpgradeView())
+    
     print(f"✅ Đăng nhập: {bot.user}")
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
@@ -122,10 +123,6 @@ async def save_player(player):
 
     player_cache[player["user_id"]] = player
 
-@bot.event
-async def on_ready():
-    print(f"✅ Đăng nhập: {bot.user}")
-
 @bot.command()
 async def roll(ctx, amount: int):
     if amount <= 0:
@@ -135,8 +132,6 @@ async def roll(ctx, amount: int):
 
     if player["cash"] < amount:
         return await ctx.send("❌ Bạn không đủ tiền!")
-
-    leveled_up = add_xp(player, 10)
 
     if leveled_up:
         await ctx.send(
@@ -185,7 +180,12 @@ async def roll(ctx, amount: int):
 
         player["cash"] += reward
         player["lose_streak"] = 0
-        player["xp"] += 25
+        leveled_up = add_xp(player, 25)
+
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
+            )
 
         await save_player(player)
 
@@ -208,7 +208,12 @@ async def roll(ctx, amount: int):
 
         player["cash"] += reward
         player["lose_streak"] = 0
-        player["xp"] += 10
+        leveled_up = add_xp(player, 25)
+
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
+            )
 
         await save_player(player)
 
@@ -227,7 +232,12 @@ async def roll(ctx, amount: int):
             player["cash"] = 100
 
         player["lose_streak"] += 1
-        player["xp"] += 5
+        leveled_up = add_xp(player, 25)
+
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
+            )
 
         await save_player(player)
 
@@ -295,10 +305,10 @@ async def slot(ctx, amount: int):
         
         leveled_up = add_xp(player, 40)
 
-    if leveled_up:
-        await ctx.send(
-            f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-        )
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
+            )
 
         await save_player(player)
 
@@ -377,7 +387,12 @@ async def slot(ctx, amount: int):
             player["cash"] = 100
 
         player["lose_streak"] += 1
-        player["xp"] += 5
+        leveled_up = add_xp(player, 25)
+
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
+            )
 
         await save_player(player)
 
@@ -388,9 +403,6 @@ async def slot(ctx, amount: int):
             f"💸 -{amount:,} Cash\n"
             f"🔥 Chuỗi thua: {player['lose_streak']}"
         )
-
-import discord
-from discord.ext import commands
 
 # ===== Buttons =====
 
@@ -553,7 +565,7 @@ async def profile(ctx, member: discord.Member = None):
             "❌ Không thể xem hồ sơ của bot."
         )
 
-    player = get_player(member.id)
+    player = await get_player(member.id)
 
     need_xp = player["level"] * 100
 
@@ -619,13 +631,14 @@ async def profile(ctx, member: discord.Member = None):
 async def toplvl(ctx):
 
     sorted_players = sorted(
-        players.items(),
+        player_cache.items(),
         key=lambda x: (
             x[1]["level"],
             x[1]["xp"]
         ),
-        reverse=True
-    )
+        
+    reverse=True
+)
 
     text = ""
 
