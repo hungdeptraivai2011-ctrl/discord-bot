@@ -122,6 +122,14 @@ async def roll(ctx, amount: int):
             f"🔥 Chuỗi thua: {player['lose_streak']}"
         )
 
+@roll.error
+async def roll_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(
+            "🎲 Cách dùng: `>roll <số tiền>`\n"
+            "Ví dụ: `>roll 1000`"
+        )
+    
 token = os.getenv("TOKEN")
 
 if token is None:
