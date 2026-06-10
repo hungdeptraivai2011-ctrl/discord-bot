@@ -129,7 +129,144 @@ async def roll_error(ctx, error):
             "🎲 Cách dùng: `>roll <số tiền>`\n"
             "Ví dụ: `>roll 1000`"
         )
-    
+
+@bot.command()
+async def slot(ctx, amount: int):
+    if amount <= 0:
+        return await ctx.send("❌ Số tiền phải lớn hơn 0!")
+
+    player = get_player(ctx.author.id)
+
+    if player["cash"] < amount:
+        return await ctx.send("❌ Bạn không đủ Cash!")
+
+    luck = player.get("luck", 0)
+    jackpot = player.get("jackpot", 0)
+    lose_streak = player.get("lose_streak", 0)
+
+    emojis = ["🍒", "🍋", "🍇", "💎", "⭐"]
+
+    msg = await ctx.send("🎰 Đang quay...")
+
+    # Animation
+    for _ in range(8):
+        e1 = random.choice(emojis)
+        e2 = random.choice(emojis)
+        e3 = random.choice(emojis)
+
+        await msg.edit(
+            content=f"🎰 | {e1} | {e2} | {e3} |"
+        )
+
+        await asyncio.sleep(0.4)
+
+    # Tỉ lệ
+    jackpot_rate = 1 + (jackpot * 0.3)
+    win_bonus = min(lose_streak * 2, 20)
+
+    if player["cash"] <= 1000:
+        win_bonus += 10
+
+    rng = random.uniform(0, 100)
+
+    # ⭐⭐⭐ JACKPOT
+    if rng <= jackpot_rate:
+        result = ["⭐", "⭐", "⭐"]
+        reward = amount * 20
+
+        player["cash"] += reward
+        player["lose_streak"] = 0
+        player["xp"] += 40
+
+        save_player(player)
+
+        return await msg.edit(
+            content=
+            f"💥 JACKPOT 💥\n"
+            f"🎰 | ⭐ | ⭐ | ⭐ |\n\n"
+            f"💰 +{reward:,} Cash"
+        )
+
+    # 💎💎💎
+    elif rng <= 5 + win_bonus + luck:
+        result = ["💎", "💎", "💎"]
+        reward = amount * 10
+
+        player["cash"] += reward
+        player["lose_streak"] = 0
+        player["xp"] += 25
+
+        save_player(player)
+
+        return await msg.edit(
+            content=
+            f"💎 SIÊU THẮNG 💎\n"
+            f"🎰 | 💎 | 💎 | 💎 |\n\n"
+            f"💰 +{reward:,} Cash"
+        )
+
+    # 🍒🍒🍒
+    elif rng <= 15 + win_bonus + luck:
+        result = ["🍒", "🍒", "🍒"]
+        reward = amount * 5
+
+        player["cash"] += reward
+        player["lose_streak"] = 0
+        player["xp"] += 15
+
+        save_player(player)
+
+        return await msg.edit(
+            content=
+            f"🎉 THẮNG LỚN!\n"
+            f"🎰 | 🍒 | 🍒 | 🍒 |\n\n"
+            f"💰 +{reward:,} Cash"
+        )
+
+    # 🍋🍋🍋
+    elif rng <= 30 + win_bonus + luck:
+        result = ["🍋", "🍋", "🍋"]
+        reward = amount * 2
+
+        player["cash"] += reward
+        player["lose_streak"] = 0
+        player["xp"] += 10
+
+        save_player(player)
+
+        return await msg.edit(
+            content=
+            f"✨ THẮNG!\n"
+            f"🎰 | 🍋 | 🍋 | 🍋 |\n\n"
+            f"💰 +{reward:,} Cash"
+        )
+
+    # THUA
+    else:
+        result = [
+            random.choice(emojis),
+            random.choice(emojis),
+            random.choice(emojis)
+        ]
+
+        player["cash"] -= amount
+
+        if player["cash"] < 100:
+            player["cash"] = 100
+
+        player["lose_streak"] += 1
+        player["xp"] += 5
+
+        save_player(player)
+
+        return await msg.edit(
+            content=
+            f"💀 THUA!\n"
+            f"🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n"
+            f"💸 -{amount:,} Cash\n"
+            f"🔥 Chuỗi thua: {player['lose_streak']}"
+        )
+
 token = os.getenv("TOKEN")
 
 if token is None:
