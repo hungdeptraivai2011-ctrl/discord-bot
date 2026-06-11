@@ -541,28 +541,26 @@ async def buff(ctx, stat=None, target=None, amount=None):
         player["jackpot"] += buff_amount
         player["win_streak"] += buff_amount
 
+        leveled_up = add_xp(player, buff_value)
         await save_player(player)
+    
+        if leveled_up:
+            await ctx.send(f"🎉 {target_member.mention} đã thăng lên Level {player['level']}!")
 
         embed = discord.Embed(
-            title="🔥 ADMIN BUFF ALL",
-            color=discord.Color.gold()
+            title="👑 ADMIN BUFF SYSTEM 👑",
+            description=f"Admin đã kích hoạt quyền năng buff chỉ số cho {target_member.mention}!",
+            color=discord.Color.purple()
         )
+        embed.add_field(name="💰 Cash", value=f"+{buff_value:,}", inline=True)
+        embed.add_field(name="📈 XP", value=f"+{buff_value:,}", inline=True)
+        embed.add_field(name="🍀 Luck", value=f"+{buff_value:,}", inline=True)
+        embed.add_field(name="🎰 Jackpot", value=f"+{buff_value:,}", inline=True)
+        embed.add_field(name="🔥 Win Streak", value=f"+{buff_value:,}", inline=True)
+    
+        return await ctx.send(embed=embed)
 
-        embed.add_field(
-            name="👤 Người nhận",
-            value=member.mention,
-            inline=False
-        )
-
-        embed.add_field(
-            name="➕ Giá trị",
-            value=f"{buff_amount:,}",
-            inline=False
-        )
-
-        await ctx.send(embed=embed)
-
-        return
+            return
 
     # ================= BUFF RIÊNG =================
 
