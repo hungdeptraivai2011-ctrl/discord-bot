@@ -582,140 +582,159 @@ async def daily(ctx):
     await ctx.send(embed=embed)
 
 # ===== View xử lý nút bấm giật tiền của Cashrain =====
+# ===== View xử lý nút bấm giật tiền của Cashrain =====
 class CashRainView(discord.ui.View):
     def __init__(self, total_pool: int, max_claims: int, duration: float):
         super().__init__(timeout=duration)
         self.total_pool = total_pool
-        self.max_claims = max_claims
-        self.claimed_users = {} # Lưu user_id: số tiền nhận được
+        self.max_claims = max_claims  # Nếu là 0 hoặc None tức là Cả Server được nhận
+        self.claimed_users = {}       # Lưu user_id: số tiền nhận được
         self.remaining_pool = total_pool
         
     @discord.ui.button(label="💰 GIẬT TIỀN NGAY! 💰", style=discord.ButtonStyle.success, custom_id="claim_cashrain")
     async def claim_cashrain(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
         
-        # 1. Kiểm tra xem user đã nhận chưa
+        # 1. Kiểm tra xem user đã nhận chưa (Chế độ nào cũng chỉ được bấm 1 lần)
         if user_id in self.claimed_users:
             return await interaction.response.send_message("❌ Bạn đã nhặt tiền từ cơn mưa này rồi, đừng tham lam thế chứ!", ephemeral=True)
             
-        # 2. Kiểm tra xem còn lượt nhận không
-        if len(self.claimed_users) >= self.max_claims or self.remaining_pool <= 0:
+        # 2. Kiểm tra nếu là chế độ GIỚI HẠN NGƯỜI và đã hết lượt
+        if self.max_claims > 0 and len(self.claimed_users) >= self.max_claims:
             button.disabled = True
             button.label = "💸 Đã bị giật sạch!"
             button.style = discord.ButtonStyle.secondary
             await interaction.message.edit(view=self)
             return await interaction.response.send_message("😢 Ôi không! Cơn mưa tiền đã bị mọi người nhặt hết sạch rồi!", ephemeral=True)
             
-        # 3. Tính toán số tiền người này nhận được
-        remaining_slots = self.max_claims - len(self.claimed_users)
-        
-        if remaining_slots == 1:
-            # Người cuối cùng hốt trọn phần còn lại
-            cash_received = self.remaining_pool
-        else:
-            # Nhận ngẫu nhiên từ 10% đến 40% số tiền còn lại trong hũ để tạo tính kịch tính
-            max_pick = int(self.remaining_pool / remaining_slots * 1.5)
-            min_pick = max(1, int(self.remaining_pool / remaining_slots * 0.5))
+        # 3. Tính toán số tiền người chơi nhận được dựa theo chế độ
+        if self.max_claims == 0:
+            # CHẾ ĐỘ CẢ SERVER: Nhận ngẫu nhiên từ 1% đến 5% tổng hũ của Admin
+            min_pick = max(1, int(self.total_pool * 0.01))
+            max_pick = max(1, int(self.total_pool * 0.05))
             cash_received = random.randint(min_pick, max_pick)
-            if cash_received > self.remaining_pool:
+            self.remaining_pool -= cash_received
+        else:
+            # CHẾ ĐỘ GIỚI HẠN: Chia hũ giảm dần kịch tính
+            remaining_slots = self.max_claims - len(self.claimed_users)
+            if remaining_slots == 1:
                 cash_received = self.remaining_pool
+            else:
+                max_pick = int(self.remaining_pool / remaining_slots * 1.5)
+                min_pick = max(1, int(self.remaining_pool / remaining_slots * 0.5))
+                cash_received = random.randint(min_pick, max_pick)
+                if cash_received > self.remaining_pool:
+                    cash_received = self.remaining_pool
+            self.remaining_pool -= cash_received
 
         # 4. Cập nhật vào Cache và Database của người chơi
         player = await get_player(user_id)
         player["cash"] += cash_received
-        self.remaining_pool -= cash_received
         self.claimed_users[user_id] = cash_received
-        
         await save_player(player)
         
         # 5. Phản hồi riêng tư cho người bấm nút
         await interaction.response.send_message(f"🎉 Bạn đã giật được **+{cash_received:,} Cash** từ cơn mưa tiền!", ephemeral=True)
         
-        # 6. Kiểm tra nếu hết lượt ngay sau khi người này nhận
-        if len(self.claimed_users) >= self.max_claims or self.remaining_pool <= 0:
+        # 6. Kiểm tra nếu hết lượt ngay sau khi người này nhận (Chỉ áp dụng với chế độ giới hạn)
+        if self.max_claims > 0 and len(self.claimed_users) >= self.max_claims:
             button.disabled = True
             button.label = "💸 Đã bị giật sạch!"
             button.style = discord.ButtonStyle.secondary
             
-            # Cập nhật Embed thông báo kết thúc sớm
             embed = interaction.message.embeds[0]
             embed.color = discord.Color.red()
             embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nToàn bộ số tiền đã được phát hết sạch!"
             
-            # Liệt kê danh sách những người ăn đậm nhất
+            # Liệt kê danh sách người ăn đậm nhất (Top 10 người)
             leaderboard = ""
-            for idx, (u_id, amt) in enumerate(self.claimed_users.items(), 1):
+            sorted_claims = sorted(self.claimed_users.items(), key=lambda x: x[1], reverse=True)
+            for idx, (u_id, amt) in enumerate(sorted_claims[:10], 1):
                 u = bot.get_user(u_id)
                 u_name = u.mention if u else f"Người chơi {u_id}"
                 leaderboard += f"{idx}. {u_name}: +{amt:,} Cash\n"
             if leaderboard:
-                embed.add_field(name="🏆 Danh sách nhận thưởng:", value=leaderboard, inline=False)
+                embed.add_field(name="🏆 Top nhận thưởng lớn nhất:", value=leaderboard, inline=False)
                 
             await interaction.message.edit(embed=embed, view=self)
-
-    async def on_timeout(self):
-        # Hàm xử lý khi hết thời gian mà chưa có ai giật hết tiền
-        for child in self.children:
-            child.disabled = True
-            child.label = "⏰ Đã hết thời gian!"
-            child.style = discord.ButtonStyle.secondary
-            
-        # Thử tìm và sửa lại tin nhắn gốc
-        # Lưu ý: Vì view không giữ message gốc mặc định nên chúng ta sẽ handle chỉnh sửa trong lệnh chính nếu cần, 
-        # nhưng cách viết cấu trúc nút này vẫn sẽ tự disable khi tương tác sau đó.
 
 
 # ================= LỆNH ADMIN CASHRAIN =================
 @bot.command()
-async def cashrain(ctx, total_pool: int = None, max_claims: int = None):
+async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
     # 1. Kiểm tra quyền Admin
     if ctx.author.id not in ADMINS:
         return await ctx.send("❌ Bạn không có thẩm quyền để tạo ra cơn mưa tiền!")
         
-    # 2. Hướng dẫn sử dụng nếu thiếu tham số
-    if total_pool is None or max_claims is None:
-        return await ctx.send("🌧️ **Cách dùng lệnh Cashrain:**\n`>cashrain <tổng_tiền_hũ> <số_người_tối_đa_nhận>`\n*Ví dụ: `>cashrain 100000 5` (Tạo hũ 100k xu chia cho 5 người nhanh tay nhất)*")
+    # 2. Hướng dẫn sử dụng nếu thiếu tham số tổng tiền hũ
+    if total_pool is None:
+        return await ctx.send(
+            "🌧️ **Cách dùng lệnh Cashrain:**\n"
+            "🔹 `>cashrain <tổng_tiền>` -> **Cả Server cùng được nhận** ngẫu nhiên.\n"
+            "🔹 `>cashrain <tổng_tiền> <số_người>` -> Chỉ giới hạn số lượng người nhanh tay nhất.\n"
+            "*Ví dụ: `>cashrain 50000` hoặc `>cashrain 100000 5`*"
+        )
         
-    if total_pool <= 0 or max_claims <= 0:
-        return await ctx.send("❌ Các thông số phải lớn hơn 0!")
+    if total_pool <= 0:
+        return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
-    duration = 60.0 # Cơn mưa tồn tại trong 60 giây, quá hạn nút sẽ bị vô hiệu hóa
+    # Xử lý tham số số người tối đa nhận
+    claims_limit = 0  # 0 nghĩa là vô hạn (Cả server)
+    if max_claims is not None:
+        try:
+            claims_limit = int(max_claims)
+            if claims_limit <= 0:
+                return await ctx.send("❌ Số lượng người nhận giới hạn phải lớn hơn 0!")
+        except ValueError:
+            return await ctx.send("❌ Số lượng người nhận giới hạn phải là một con số hợp lệ!")
 
-    # 3. Tạo Embed thông báo sự kiện
+    duration = 60.0  # Cơn mưa tồn tại trong 60 giây
+
+    # 3. Thiết lập thông tin Embed theo chế độ
     embed = discord.Embed(
         title="🌧️💸 CƠN MƯA TIỀN TỆ ĐÃ XUẤT HIỆN! 💸🌧️",
         description=f"Admin {ctx.author.mention} đang thả một cơn mưa tiền khổng lồ vào kênh chat!\nHãy nhanh tay nhấn vào nút dưới đây để nhặt tiền!",
         color=discord.Color.gold()
     )
     embed.add_field(name="💰 Tổng giá trị hũ tiền", value=f"**{total_pool:,} Cash**", inline=True)
-    embed.add_field(name="👥 Số suất nhận thưởng", value=f"**{max_claims} người** nhanh tay nhất", inline=True)
+    
+    if claims_limit == 0:
+        embed.add_field(name="👥 Số suất nhận thưởng", value="**🌍 CẢ SERVER** (Mỗi người 1 lượt)", inline=True)
+    else:
+        embed.add_field(name="👥 Số suất nhận thưởng", value=f"**{claims_limit} người** nhanh tay nhất", inline=True)
+        
     embed.add_field(name="⏳ Thời gian hiệu lực", value=f"**{int(duration)} giây**", inline=False)
     embed.set_footer(text="Hệ thống tự động chia ngẫu nhiên số tiền nhặt được!")
     
-    view = CashRainView(total_pool, max_claims, duration)
+    view = CashRainView(total_pool, claims_limit, duration)
     
-    # Gửi tin nhắn sự kiện kèm Nút Bấm
+    # Gửi tin nhắn sự kiện kèm Nút Bấm công khai
     rain_msg = await ctx.send(content="@here 🎉 SỰ KIỆN CASHRAIN!", embed=embed, view=view)
     
     # Chờ hết thời gian chạy lệnh
     await asyncio.sleep(duration)
     
-    # Sau khi hết thời gian, kiểm tra nếu hũ vẫn còn tiền thì đóng nút lại
+    # Sau khi hết thời gian, đóng nút lại nếu chưa bị đóng trước đó
     if not view.children[0].disabled:
         view.children[0].disabled = True
         view.children[0].label = "⏰ Đã hết thời gian!"
         view.children[0].style = discord.ButtonStyle.secondary
         
         embed.color = discord.Color.dark_gray()
-        embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC (Hết thời gian)!**\nCác đồng tiền chưa kịp nhặt đã tan biến vào hư vô."
+        embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nThời gian nhặt tiền đã khép lại."
         
+        # Sắp xếp và hiển thị bảng xếp hạng những người nhặt được nhiều nhất
         leaderboard = ""
-        for idx, (u_id, amt) in enumerate(view.claimed_users.items(), 1):
+        sorted_claims = sorted(view.claimed_users.items(), key=lambda x: x[1], reverse=True)
+        for idx, (u_id, amt) in enumerate(sorted_claims[:10], 1):
             u = bot.get_user(u_id)
             u_name = u.mention if u else f"Người chơi {u_id}"
             leaderboard += f"{idx}. {u_name}: +{amt:,} Cash\n"
+            
         if leaderboard:
-            embed.add_field(name="🏆 Danh sách những người đã nhận:", value=leaderboard, inline=False)
+            embed.add_field(name="🏆 Bảng vinh danh nhặt tiền (Top 10):", value=leaderboard, inline=False)
+        else:
+            embed.add_field(name="🏆 Kết quả:", value="Không có ai tham gia nhặt tiền trong đợt này.", inline=False)
             
         await rain_msg.edit(embed=embed, view=view)
         
