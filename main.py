@@ -281,7 +281,7 @@ async def slot(ctx, bet: str = None):
     # 1. ⭐⭐⭐ SLOT JACKPOT
     if rng <= jackpot_rate:
         result = ["⭐", "⭐", "⭐"]
-        reward = amount * 20
+        reward = bet_amount * 20
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -303,7 +303,7 @@ async def slot(ctx, bet: str = None):
     # 2. 💎💎💎 SIÊU THẮNG
     elif rng <= 5 + win_bonus + luck:
         result = ["💎", "💎", "💎"]
-        reward = amount * 10
+        reward = bet_amount * 10
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -322,7 +322,7 @@ async def slot(ctx, bet: str = None):
     # 3. 🍒🍒🍒 THẮNG LỚN
     elif rng <= 15 + win_bonus + luck:
         result = ["🍒", "🍒", "🍒"]
-        reward = amount * 5
+        reward = bet_amount * 5
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -341,7 +341,7 @@ async def slot(ctx, bet: str = None):
     # 4. 🍋🍋🍋 THẮNG THƯỜNG
     elif rng <= 30 + win_bonus + luck:
         result = ["🍋", "🍋", "🍋"]
-        reward = amount * 2
+        reward = bet_amount * 2
         player["cash"] += reward
         player["win_streak"] += 1
 
