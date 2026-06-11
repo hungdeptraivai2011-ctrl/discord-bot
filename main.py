@@ -752,7 +752,7 @@ async def toplvl(ctx):
 
     await ctx.send(embed=embed)
 
-ADMINS = [1195361246195757118]
+ADMINS = [1195361246195757118, 1335606447144173610]
 
 @bot.command()
 async def buff(ctx, stat=None, target=None, amount=None):
