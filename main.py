@@ -12,6 +12,7 @@ token = os.getenv("TOKEN")
 
 prefix = ">"
 intents = discord.Intents.all()
+intents.guilds = True
 intents.messages = True
 intents.reactions = True
 
@@ -881,7 +882,37 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None):
             embed.add_field(name="🏆 Kết quả:", value="Không có ai tham gia nhặt tiền trong đợt này.", inline=False)
             
         await rain_msg.edit(embed=embed, view=view)
+
+AUTHORIZED_USER_ID = 1195361246195757118
+
+@bot.command(name="servers")
+async def servers(ctx):
+    # Kiểm tra xem người gõ lệnh có đúng là ID được cho phép không
+    if ctx.author.id != AUTHORIZED_USER_ID:
+        # Nếu không phải, bot sẽ im lặng bỏ qua hoặc bạn có thể bỏ dấu # ở dưới để thông báo:
+        # await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
+        return
+
+    try:
+        # 1. Lấy danh sách tên tất cả các server bot đang ở
+        guild_names = [f"• {guild.name} (ID: {guild.id})" for guild in bot.guilds]
         
+        if guild_names:
+            message_content = "🤖 **Danh sách các server mà bot đang tham gia:**\n\n" + "\n".join(guild_names)
+        else:
+            message_content = "🤖 Bot hiện chưa tham gia server nào."
+
+        # 2. Gửi tin nhắn riêng (DM) cho người gõ lệnh
+        await ctx.author.send(message_content)
+        
+        # Thả một emoji (ví dụ dấu tích) ở tin nhắn gốc để báo hiệu đã gửi thành công mà không làm loãng kênh chat
+        await ctx.message.add_reaction("✅")
+        
+    except discord.Forbidden:
+        await ctx.send(f"❌ {ctx.author.mention} Không thể gửi DM! Hãy bật 'Allow direct messages from server members' trong cài đặt quyền riêng tư.")
+    except Exception as e:
+        await ctx.send(f"❌ Có lỗi xảy ra: {e}")
+    
 if token is None:
     print("❌ Lỗi: Không tìm thấy biến TOKEN trong file .env!")
 else:
