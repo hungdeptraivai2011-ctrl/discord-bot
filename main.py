@@ -144,24 +144,6 @@ def parse_bet_amount(val_str: str, current_cash: int) -> int:
             
     return int(float(val_str))
 
-@bot.command()
-async def add_role(ctx, member: discord.Member = None, role: discord.Role = None):
-    if member is None or role is None:
-        await ctx.send(
-            "```>app_role 'member' 'role'\n           ^^^^^^   ^^^^\n^ là chỗ cần điền```"
-        )
-        return
-
-    try:
-        await member.add_roles(role)
-        await ctx.send(f"✅ | {member.mention} **đã được thêm role**")
-    except discord.Forbidden:
-        await ctx.send("**❌ | Bot không có đủ quyền hạn để thêm role cho thành viên!**")
-    except discord.HTTPException:
-        await ctx.send("**⚠️ | Đã xảy ra lỗi khi thêm role cho thành viên!**")
-    except Exception as e:
-        print(f"⚠️ | Đã xảy ra lỗi: {e}")
-
 # ================= LỆNH ROLL (HỆ SỐ NHÂN >= 2.0) =================
 @bot.command()
 async def roll(ctx, bet: str = None): 
