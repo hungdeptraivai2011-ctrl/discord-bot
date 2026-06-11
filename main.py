@@ -560,8 +560,6 @@ async def buff(ctx, stat=None, target=None, amount=None):
     
         return await ctx.send(embed=embed)
 
-            return
-
     # ================= BUFF RIÊNG =================
 
     valid_stats = [
