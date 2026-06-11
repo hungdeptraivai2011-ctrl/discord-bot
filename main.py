@@ -60,10 +60,11 @@ async def on_ready():
 
             data["_message_id"] = msg.id
 
-            player_cache[data["user_id"]] = data
+            async for msg in channel.history(limit=None, oldest_first=True):
 
-        except:
-            pass
+        except Exception as e:
+            print(f"Lỗi đọc dữ liệu: {e}")
+           
 
     print(
         f"📂 Đã tải {len(player_cache)} người chơi"
@@ -99,7 +100,9 @@ async def get_player(user_id):
 
     if user_id in player_cache:
         return player_cache[user_id]
-
+    
+    print(f"⚠ Không tìm thấy user {user_id} trong cache")
+    
     return await create_player(user_id)
 
 
@@ -132,11 +135,6 @@ async def roll(ctx, amount: int):
 
     if player["cash"] < amount:
         return await ctx.send("❌ Bạn không đủ tiền!")
-
-    if leveled_up:
-        await ctx.send(
-            f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-        )
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
