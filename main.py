@@ -582,7 +582,6 @@ async def daily(ctx):
     await ctx.send(embed=embed)
 
 # ===== View xử lý nút bấm giật tiền của Cashrain =====
-# ===== View xử lý nút bấm giật tiền của Cashrain =====
 class CashRainView(discord.ui.View):
     def __init__(self, total_pool: int, max_claims: int, duration: float):
         super().__init__(timeout=duration)
@@ -659,7 +658,7 @@ class CashRainView(discord.ui.View):
             await interaction.message.edit(embed=embed, view=self)
 
 
-# ================= LỆNH ADMIN CASHRAIN =================
+# ================= LỆNH ADMIN CASHRAIN (CÓ ĐẾM NGƯỢC) =================
 @bot.command()
 async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
     # 1. Kiểm tra quyền Admin
@@ -689,6 +688,12 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
             return await ctx.send("❌ Số lượng người nhận giới hạn phải là một con số hợp lệ!")
 
     duration = 60.0  # Cơn mưa tồn tại trong 60 giây
+    
+    # --- TÍNH TOÁN THỜI GIAN ĐẾM NGƯỢC ---
+    # Lấy timestamp Unix tương lai khi sự kiện kết thúc
+    end_timestamp = int(datetime.now(timezone.utc).timestamp() + duration)
+    # Tạo chuỗi định dạng đếm ngược động của Discord: <t:timestamp:R>
+    countdown_tag = f"<t:{end_timestamp}:R>"
 
     # 3. Thiết lập thông tin Embed theo chế độ
     embed = discord.Embed(
@@ -703,7 +708,8 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
     else:
         embed.add_field(name="👥 Số suất nhận thưởng", value=f"**{claims_limit} người** nhanh tay nhất", inline=True)
         
-    embed.add_field(name="⏳ Thời gian hiệu lực", value=f"**{int(duration)} giây**", inline=False)
+    # Chèn thẻ đếm ngược vào trong Embed
+    embed.add_field(name="⏳ Thời gian còn lại", value=f"Sự kiện sẽ kết thúc {countdown_tag}", inline=False)
     embed.set_footer(text="Hệ thống tự động chia ngẫu nhiên số tiền nhặt được!")
     
     view = CashRainView(total_pool, claims_limit, duration)
@@ -722,6 +728,9 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
         
         embed.color = discord.Color.dark_gray()
         embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nThời gian nhặt tiền đã khép lại."
+        
+        # Cập nhật lại trường Thời gian sang trạng thái Đóng
+        embed.set_field_at(2, name="⏳ Thời gian còn lại", value="🔴 **Đã hết giờ!**", inline=False)
         
         # Sắp xếp và hiển thị bảng xếp hạng những người nhặt được nhiều nhất
         leaderboard = ""
