@@ -657,10 +657,36 @@ class CashRainView(discord.ui.View):
                 
             await interaction.message.edit(embed=embed, view=self)
 
-
-# ================= LỆNH ADMIN CASHRAIN (CÓ ĐẾM NGƯỢC) =================
+def parse_abbreviated_number(val_str: str) -> int:
+    """Chuyển đổi các chuỗi viết tắt như 100k, 2m, 1.5m thành số nguyên int cụ thể."""
+    if val_str is None:
+        return 0
+    
+    # Xóa khoảng trắng và chuyển về chữ thường
+    val_str = str(val_str).strip().lower()
+    
+    # Định nghĩa các hệ số quy đổi
+    multipliers = {
+        'k': 1_000,
+        'm': 1_000_000,
+        'b': 1_000_000_000
+    }
+    
+    # Nếu ký tự cuối cùng nằm trong danh sách viết tắt
+    if val_str[-1] in multipliers:
+        unit = val_str[-1]
+        number_part = val_str[:-1] # Lấy phần số phía trước chữ k/m/b
+        try:
+            # Dùng float để xử lý được cả số thập phân như 1.5m hoặc 2.5k
+            return int(float(number_part) * multipliers[unit])
+        except ValueError:
+            raise ValueError("Định dạng số không hợp lệ.")
+            
+    # Nếu không chứa ký tự viết tắt, cố gắng ép kiểu về int thông thường
+    return int(float(val_str))
+    
 @bot.command()
-async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
+async def cashrain(ctx, total_pool: str = None, max_claims: str = None): # Chuyển total_pool thành str để không bị lỗi Discord
     # 1. Kiểm tra quyền Admin
     if ctx.author.id not in ADMINS:
         return await ctx.send("❌ Bạn không có thẩm quyền để tạo ra cơn mưa tiền!")
@@ -671,28 +697,33 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
             "🌧️ **Cách dùng lệnh Cashrain:**\n"
             "🔹 `>cashrain <tổng_tiền>` -> **Cả Server cùng được nhận** ngẫu nhiên.\n"
             "🔹 `>cashrain <tổng_tiền> <số_người>` -> Chỉ giới hạn số lượng người nhanh tay nhất.\n"
-            "*Ví dụ: `>cashrain 50000` hoặc `>cashrain 100000 5`*"
+            "*Ví dụ: `>cashrain 500k` hoặc `>cashrain 10m 5` hoặc `>cashrain 400000 10`*"
         )
         
-    if total_pool <= 0:
+    # --- XỬ LÝ CHUYỂN ĐỔI SỐ TIỀN HŨ ---
+    try:
+        pool_amount = parse_abbreviated_number(total_pool)
+    except ValueError:
+        return await ctx.send("❌ Định dạng số tiền tổng hũ không hợp lệ! Hãy nhập số thường hoặc viết tắt dạng `100k`, `2m`, `1.5m`...")
+
+    if pool_amount <= 0:
         return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
-    # Xử lý tham số số người tối đa nhận
+    # --- XỬ LÝ THAM SỐ SỐ NGƯỜI TỐI ĐA NHẬN ---
     claims_limit = 0  # 0 nghĩa là vô hạn (Cả server)
     if max_claims is not None:
         try:
+            # Người dùng cũng có thể nhập giới hạn người dạng số thường
             claims_limit = int(max_claims)
             if claims_limit <= 0:
                 return await ctx.send("❌ Số lượng người nhận giới hạn phải lớn hơn 0!")
         except ValueError:
-            return await ctx.send("❌ Số lượng người nhận giới hạn phải là một con số hợp lệ!")
+            return await ctx.send("❌ Số lượng người nhận giới hạn phải là một con số nguyên hợp lệ!")
 
     duration = 60.0  # Cơn mưa tồn tại trong 60 giây
     
     # --- TÍNH TOÁN THỜI GIAN ĐẾM NGƯỢC ---
-    # Lấy timestamp Unix tương lai khi sự kiện kết thúc
     end_timestamp = int(datetime.now(timezone.utc).timestamp() + duration)
-    # Tạo chuỗi định dạng đếm ngược động của Discord: <t:timestamp:R>
     countdown_tag = f"<t:{end_timestamp}:R>"
 
     # 3. Thiết lập thông tin Embed theo chế độ
@@ -701,18 +732,18 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
         description=f"Admin {ctx.author.mention} đang thả một cơn mưa tiền khổng lồ vào kênh chat!\nHãy nhanh tay nhấn vào nút dưới đây để nhặt tiền!",
         color=discord.Color.gold()
     )
-    embed.add_field(name="💰 Tổng giá trị hũ tiền", value=f"**{total_pool:,} Cash**", inline=True)
+    embed.add_field(name="💰 Tổng giá trị hũ tiền", value=f"**{pool_amount:,} Cash**", inline=True)
     
     if claims_limit == 0:
         embed.add_field(name="👥 Số suất nhận thưởng", value="**🌍 CẢ SERVER** (Mỗi người 1 lượt)", inline=True)
     else:
         embed.add_field(name="👥 Số suất nhận thưởng", value=f"**{claims_limit} người** nhanh tay nhất", inline=True)
         
-    # Chèn thẻ đếm ngược vào trong Embed
     embed.add_field(name="⏳ Thời gian còn lại", value=f"Sự kiện sẽ kết thúc {countdown_tag}", inline=False)
     embed.set_footer(text="Hệ thống tự động chia ngẫu nhiên số tiền nhặt được!")
     
-    view = CashRainView(total_pool, claims_limit, duration)
+    # Khởi tạo View với pool_amount đã được ép kiểu thành số int thành công
+    view = CashRainView(pool_amount, claims_limit, duration)
     
     # Gửi tin nhắn sự kiện kèm Nút Bấm công khai
     rain_msg = await ctx.send(content="@here 🎉 SỰ KIỆN CASHRAIN!", embed=embed, view=view)
@@ -728,8 +759,6 @@ async def cashrain(ctx, total_pool: int = None, max_claims: str = None):
         
         embed.color = discord.Color.dark_gray()
         embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nThời gian nhặt tiền đã khép lại."
-        
-        # Cập nhật lại trường Thời gian sang trạng thái Đóng
         embed.set_field_at(2, name="⏳ Thời gian còn lại", value="🔴 **Đã hết giờ!**", inline=False)
         
         # Sắp xếp và hiển thị bảng xếp hạng những người nhặt được nhiều nhất
