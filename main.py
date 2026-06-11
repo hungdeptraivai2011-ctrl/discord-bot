@@ -38,8 +38,9 @@ player_cache = {}
 
 @bot.event
 async def on_ready():
+
     bot.add_view(UpgradeView())
-    
+
     print(f"✅ Đăng nhập: {bot.user}")
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
@@ -50,7 +51,10 @@ async def on_ready():
 
     player_cache.clear()
 
-    async for msg in channel.history(limit=None):
+    async for msg in channel.history(
+        limit=None,
+        oldest_first=True
+    ):
 
         try:
             data = json.loads(msg.content)
@@ -60,11 +64,12 @@ async def on_ready():
 
             data["_message_id"] = msg.id
 
-            async for msg in channel.history(limit=None, oldest_first=True):
+            player_cache[data["user_id"]] = data
 
         except Exception as e:
-            print(f"Lỗi đọc dữ liệu: {e}")
-           
+            print(
+                f"Lỗi đọc dữ liệu: {e}"
+            )
 
     print(
         f"📂 Đã tải {len(player_cache)} người chơi"
