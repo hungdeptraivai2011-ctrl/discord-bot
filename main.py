@@ -143,7 +143,7 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
         return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
     # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
-    player["cash"] -= amount
+    player["cash"] -= bet_amount
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
@@ -257,7 +257,7 @@ async def slot(ctx, bet: str = None):
         return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
     # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
-    player["cash"] -= amount
+    player["cash"] -= bet_amount
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
