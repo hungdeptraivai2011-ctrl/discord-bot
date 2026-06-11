@@ -39,9 +39,8 @@ player_cache = {}
 
 @bot.event
 async def on_ready():
-
     bot.add_view(UpgradeView())
-
+    
     print(f"✅ Đăng nhập: {bot.user}")
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
@@ -137,18 +136,34 @@ async def create_player(user_id):
 
 async def get_player(user_id):
 
-    while not data_loaded:
-        await asyncio.sleep(1)
-
+    # Cache
     if user_id in player_cache:
         return player_cache[user_id]
 
-    print(
-        f"⚠ Tạo mới user {user_id}"
-    )
+    channel = bot.get_channel(DATA_CHANNEL_ID)
 
+    # Tìm trong kênh dữ liệu
+    async for msg in channel.history(
+        limit=None,
+        oldest_first=True
+    ):
+
+        try:
+            data = json.loads(msg.content)
+
+            if data.get("user_id") == user_id:
+
+                data["_message_id"] = msg.id
+
+                player_cache[user_id] = data
+
+                return data
+
+        except:
+            continue
+
+    # Không tìm thấy -> tạo mới
     return await create_player(user_id)
-
 
 async def save_player(player):
 
@@ -170,6 +185,30 @@ async def save_player(player):
 
     player_cache[player["user_id"]] = player
 
+async def load_all_players():
+
+    channel = bot.get_channel(DATA_CHANNEL_ID)
+
+    player_cache.clear()
+
+    async for msg in channel.history(
+        limit=None,
+        oldest_first=True
+    ):
+
+        try:
+            data = json.loads(msg.content)
+
+            if "user_id" not in data:
+                continue
+
+            data["_message_id"] = msg.id
+
+            player_cache[data["user_id"]] = data
+
+        except:
+            pass
+            
 @bot.command()
 async def roll(ctx, amount: int):
     if amount <= 0:
@@ -673,7 +712,9 @@ async def profile(ctx, member: discord.Member = None):
 
 @bot.command()
 async def toplvl(ctx):
-
+    
+    await load_all_players()
+    
     sorted_players = sorted(
         player_cache.items(),
         key=lambda x: (
