@@ -487,11 +487,10 @@ async def buff(ctx, stat=None, target=None, amount=None):
 
     if stat is None:
         return await ctx.send(
-            "👑 Cách dùng:\n"
-            ">buff all @user 10k\n"
-            ">buff cash @user 10m\n"
-            ">buff level @user 5\n"
-            ">buff luck @user 10"
+            "👑 **Cách dùng lệnh Buff Admin:**\n"
+            "🔹 `>buff all @user <số_lượng>` -> Buff tất cả chỉ số cho người được tag\n"
+            "🔹 `>buff <chỉ_số> @User <số_lượng>` -> Buff chỉ số cho người được tag.\n"
+            "*Ví dụ: `>buff all @user 50k` hoặc `>buff luck @User 5`*"
         )
 
     if target is None:
@@ -540,7 +539,7 @@ async def buff(ctx, stat=None, target=None, amount=None):
         player["level"] += buff_amount
         player["luck"] += buff_amount
         player["jackpot"] += buff_amount
-        player["lose_streak"] += buff_amount
+        player["win_streak"] += buff_amount
 
         await save_player(player)
 
@@ -573,7 +572,7 @@ async def buff(ctx, stat=None, target=None, amount=None):
         "level",
         "luck",
         "jackpot",
-        "lose_streak"
+        "win_streak"
     ]
 
     if stat not in valid_stats:
