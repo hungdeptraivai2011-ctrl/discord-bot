@@ -471,92 +471,53 @@ async def toplvl(ctx):
 
 ADMINS = [1195361246195757118, 1335606447144173610]
 
-# ================= LỆNH ADMIN BUFF (CƠ CHẾ MỚI) =================
+# ================= LỆNH ADMIN BUFF (GIỮ NGUYÊN CHỨC NĂNG - THÊM ALL) =================
 @bot.command()
 async def buff(ctx, target: str = None, amount: str = None):
     # 1. Kiểm tra quyền Admin
     if ctx.author.id not in ADMINS:
         return await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
         
-    if target is None:
+    if target is None or amount is None:
         return await ctx.send(
             "👑 **Cách dùng lệnh Buff Admin:**\n"
-            "🔹 `>buff all <số_lượng>` -> **Buff TẤT CẢ các chỉ số** cho chính bạn.\n"
-            "🔹 `>buff @User <số_tiền>` -> **Chỉ buff tiền** cho người được tag.\n"
+            "🔹 `>buff @User <số_tiền>` -> Buff tiền cho 1 người.\n"
+            "🔹 `>buff all <số_tiền>` -> **Buff tiền cho TẤT CẢ người chơi** trong hệ thống.\n"
             "*Ví dụ: `>buff all 50k` hoặc `>buff @NguyễnVănA 1m`*"
         )
 
-    # 2. Trường hợp 1: Admin tự buff tất cả chỉ số cho bản thân (>buff all <số_lượng>)
+    # 2. Quy đổi số tiền buff (Hỗ trợ gõ tắt 100k, 1m...)
+    try:
+        buff_amount = parse_bet_amount(amount, 0) 
+    except ValueError:
+        return await ctx.send("❌ Định dạng số tiền buff không hợp lệ!")
+
+    if buff_amount <= 0:
+        return await ctx.send("❌ Số tiền buff phải lớn hơn 0!")
+
+    # 3. Trường hợp: >buff all <số_tiền> (Buff tiền cho TẤT CẢ mọi người)
     if target.lower() == "all":
-        # Nếu chỉ gõ >buff all mà quên nhập số lượng
-        if amount is None:
-            return await ctx.send("❌ Vui lòng nhập số lượng muốn buff cho các chỉ số! Ví dụ: `>buff all 100` hoặc `>buff all 50k`")
+        count = 0
+        # Duyệt qua toàn bộ người chơi trong bộ nhớ cache để cộng tiền
+        for user_id, player_data in player_cache.items():
+            player_data["cash"] += buff_amount
+            await save_player(player_data)
+            count += 1
             
-        try:
-            # Quy đổi số lượng (chấp nhận k, m, b) dựa trên ví của chính admin (truyền 0 vì đây là lệnh tạo tiền/chỉ số)
-            buff_value = parse_bet_amount(amount, 0)
-        except ValueError:
-            return await ctx.send("❌ Định dạng số lượng chỉ số cần buff không hợp lệ!")
+        return await ctx.send(f"🎉 **Chế độ Admin:** Đã phát lộc thành công **+{buff_amount:,} Cash** cho tất cả **{count}** người chơi trong hệ thống!")
 
-        # Lấy dữ liệu của chính Admin
-        admin_player = await get_player(ctx.author.id)
-        
-        # Tiến hành tăng TẤT CẢ các chỉ số có trong hệ thống
-        admin_player["cash"] += buff_value
-        admin_player["luck"] += buff_value
-        admin_player["jackpot"] += buff_value
-        admin_player["win_streak"] += buff_value
-        
-        # Riêng XP cần cộng qua hàm add_xp để tự động xử lý lên cấp (Level) hợp lệ
-        leveled_up = add_xp(admin_player, buff_value)
-        
-        # Lưu lại thay đổi vào database
-        await save_player(admin_player)
-        
-        # Thông báo lên cấp nếu có
-        if leveled_up:
-            await ctx.send(f"🎉 Admin {ctx.author.mention} đã thăng lên Level {admin_player['level']} từ việc buff chỉ số!")
-
-        # Tạo Embed thông báo full chỉ số cho đẹp mắt
-        embed = discord.Embed(
-            title="👑 ADMIN BUFF TOÀN DIỆN 👑",
-            description=f"Admin **{ctx.author.display_name}** đã kích hoạt quyền năng tự buff toàn bộ chỉ số cho bản thân!",
-            color=discord.Color.purple()
-        )
-        embed.add_field(name="💰 Cash", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="📈 XP", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🍀 Luck", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🎰 Jackpot", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🔥 Win Streak", value=f"+{buff_value:,}", inline=True)
-        embed.set_footer(text="Tất cả dữ liệu đã được cập nhật thành công!")
-        
-        return await ctx.send(embed=embed)
-
-    # 3. Trường hợp 2: Buff tiền cho một người chơi cụ thể được tag (>buff @User <số_tiền>)
+    # 4. Trường hợp: >buff @User <số_tiền> (Buff tiền cho 1 người cụ thể)
     else:
-        # Nếu người dùng nhập tên/tag nhưng lại quên nhập số tiền ở tham số thứ 2
-        # (Vì Discord nhận tham số theo khoảng trắng, lúc này biến `amount` sẽ bị trống)
-        if amount is None:
-            return await ctx.send("❌ Vui lòng nhập số tiền muốn buff cho người này! Ví dụ: `>buff @User 500k`")
-
-        # Kiểm tra xem có tag (mention) ai không
+        # Kiểm tra xem có tag đúng người dùng không
         if not ctx.message.mentions:
-            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff tiền hoặc gõ `all` để tự buff cho mình!")
+            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để phát toàn server!")
             
-        try:
-            buff_cash = parse_bet_amount(amount, 0)
-        except ValueError:
-            return await ctx.send("❌ Định dạng số tiền buff không hợp lệ!")
-
-        # Lấy người chơi đầu tiên được nhắc đến trong tin nhắn
-        target_member = ctx.message.mentions[0]
-        target_player = await get_player(target_member.id)
+        member = ctx.message.mentions[0]
+        player = await get_player(member.id)
+        player["cash"] += buff_amount
+        await save_player(player)
         
-        # Chỉ cộng duy nhất chỉ số Cash (Tiền) cho người này
-        target_player["cash"] += buff_cash
-        await save_player(target_player)
-        
-        return await ctx.send(f"👑 Đã buff thành công **+{buff_cash:,} Cash** vào tài khoản của {target_member.mention}!")
+        return await ctx.send(f"👑 Đã buff thành công **+{buff_amount:,} Cash** vào tài khoản của {member.mention}!")
 
 @bot.command()
 async def reset(ctx, member: discord.Member = None):
