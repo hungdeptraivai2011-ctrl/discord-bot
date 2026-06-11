@@ -498,7 +498,6 @@ async def buff(ctx, stat=None, target=None, amount=None):
             "❌ Vui lòng mention người chơi!"
         )
 
-    # Lấy người chơi được tag
     if not ctx.message.mentions:
         return await ctx.send(
             "❌ Vui lòng mention người chơi!"
@@ -528,9 +527,17 @@ async def buff(ctx, stat=None, target=None, amount=None):
 
     player = await get_player(member.id)
 
+    # Tự thêm key nếu thiếu
+    player.setdefault("cash", 1000)
+    player.setdefault("xp", 0)
+    player.setdefault("level", 1)
+    player.setdefault("luck", 0)
+    player.setdefault("jackpot", 0)
+    player.setdefault("win_streak", 0)
+
     stat = stat.lower()
 
-    # ================= ALL =================
+    # ================= BUFF ALL =================
 
     if stat == "all":
 
@@ -541,23 +548,50 @@ async def buff(ctx, stat=None, target=None, amount=None):
         player["jackpot"] += buff_amount
         player["win_streak"] += buff_amount
 
-        leveled_up = add_xp(player, buff_value)
         await save_player(player)
-    
-        if leveled_up:
-            await ctx.send(f"🎉 {target_member.mention} đã thăng lên Level {player['level']}!")
 
         embed = discord.Embed(
-            title="👑 ADMIN BUFF SYSTEM 👑",
-            description=f"Admin đã kích hoạt quyền năng buff chỉ số cho {target_member.mention}!",
-            color=discord.Color.purple()
+            title="👑 ADMIN BUFF ALL 👑",
+            description=f"{member.mention} đã được buff toàn bộ chỉ số!",
+            color=discord.Color.gold()
         )
-        embed.add_field(name="💰 Cash", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="📈 XP", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🍀 Luck", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🎰 Jackpot", value=f"+{buff_value:,}", inline=True)
-        embed.add_field(name="🔥 Win Streak", value=f"+{buff_value:,}", inline=True)
-    
+
+        embed.add_field(
+            name="💰 Cash",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="📈 XP",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="⭐ Level",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🍀 Luck",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="💎 Jackpot",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🔥 Lose Streak",
+            value=f"+{buff_amount:,}",
+            inline=True
+        )
+
         return await ctx.send(embed=embed)
 
     # ================= BUFF RIÊNG =================
@@ -579,7 +613,6 @@ async def buff(ctx, stat=None, target=None, amount=None):
 
     player[stat] += buff_amount
 
-    # Không cho âm
     if stat == "level":
         player["level"] = max(
             1,
@@ -611,7 +644,7 @@ async def buff(ctx, stat=None, target=None, amount=None):
     )
 
     embed.add_field(
-        name="➕ Giá trị",
+        name="➕ Giá trị buff",
         value=f"{buff_amount:,}",
         inline=True
     )
