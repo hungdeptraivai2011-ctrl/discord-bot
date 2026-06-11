@@ -39,39 +39,76 @@ player_cache = {}
 
 @bot.event
 async def on_ready():
-print("=== LOAD DATA ===")
-async for msg in channel.history(
-    limit=None,
-    oldest_first=True
-):
 
-    print("MSG:", msg.content)
+    bot.add_view(UpgradeView())
 
-    try:
-        data = json.loads(msg.content)
+    print(f"✅ Đăng nhập: {bot.user}")
 
-        print("JSON:", data)
+    channel = bot.get_channel(DATA_CHANNEL_ID)
 
-        if "user_id" not in data:
-            print("Bỏ qua: không có user_id")
-            continue
+    if channel is None:
+        print("❌ Không tìm thấy kênh dữ liệu!")
+        return
 
-        data["_message_id"] = msg.id
+    player_cache.clear()
 
-        player_cache[data["user_id"]] = data
+    async for msg in channel.history(
+        limit=None,
+        oldest_first=True
+    ):
 
-        print(
-            f"Load user {data['user_id']}"
-        )
+        try:
+            data = json.loads(msg.content)
 
-    except Exception as e:
-        print(
-            f"Lỗi đọc dữ liệu: {e}"
-        )
+            if "user_id" not in data:
+                continue
 
-print(
-    f"📂 Đã tải {len(player_cache)} người chơi"
-)
+            data["_message_id"] = msg.id
+
+            player_cache[data["user_id"]] = data
+
+        except Exception as e:
+            print(
+                f"Lỗi đọc dữ liệu: {e}"
+            )
+
+    print(
+        f"📂 Đã tải {len(player_cache)} người chơi"
+    )
+
+    print("=== LOAD DATA ===")
+    async for msg in channel.history(
+        limit=None,
+        oldest_first=True
+    ):
+
+        print("MSG:", msg.content)
+
+        try:
+            data = json.loads(msg.content)
+
+            print("JSON:", data)
+
+            if "user_id" not in data:
+                print("Bỏ qua: không có user_id")
+                continue
+
+            data["_message_id"] = msg.id
+
+            player_cache[data["user_id"]] = data
+
+            print(
+                f"Load user {data['user_id']}"
+            )
+
+        except Exception as e:
+            print(
+                f"Lỗi đọc dữ liệu: {e}"
+            )
+
+    print(
+        f"📂 Đã tải {len(player_cache)} người chơi"
+    )
 
 async def create_player(user_id):
 
