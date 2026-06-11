@@ -477,74 +477,156 @@ async def toplvl(ctx):
 
 ADMINS = [1195361246195757118, 1335606447144173610]
 
-# ================= LỆNH BUFF (GIỮ NGUYÊN GỐC - CHỈ THÊM CHỮ ALL) =================
 @bot.command()
-async def buff(
-    ctx,
-    stat=None,
-    target: str = None,  # Đổi sang kiểu str để nhận diện cả chữ 'all' hoặc Tag Người chơi
-    amount: str = None   # Đổi sang str đề phòng Admin nhập lượng buff là '50k', '1m'
-):
+async def buff(ctx, stat=None, target=None, amount=None):
+
     if ctx.author.id not in ADMINS:
-        return await ctx.send("❌ Bạn không có quyền!")
+        return await ctx.send(
+            "❌ Bạn không có quyền dùng lệnh này!"
+        )
 
     if stat is None:
         return await ctx.send(
-            "👑 **Cách dùng lệnh Buff Admin:**\n"
-            "🔹 `>buff <chỉ_số> all <số_lượng>` -> Tự buff chỉ số cho chính mình.\n"
-            "🔹 `>buff <chỉ_số> @User <số_lượng>` -> Buff chỉ số cho người được tag.\n"
-            "*Ví dụ: `>buff cash all 50k` hoặc `>buff luck @User 5`*"
+            "👑 Cách dùng:\n"
+            ">buff all @user 10k\n"
+            ">buff cash @user 10m\n"
+            ">buff level @user 5\n"
+            ">buff luck @user 10"
         )
 
-    # --- XỬ LÝ CHỮ 'ALL' Ở THAM SỐ TARGET ĐỂ PHÙ HỢP LOGIC GỐC ---
     if target is None:
-        target_member = ctx.author
-    elif target.lower() == "all":
-        target_member = ctx.author
-    else:
-        if not ctx.message.mentions:
-            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để tự buff!")
-        target_member = ctx.message.mentions[0]
+        return await ctx.send(
+            "❌ Vui lòng mention người chơi!"
+        )
+
+    # Lấy người chơi được tag
+    if not ctx.message.mentions:
+        return await ctx.send(
+            "❌ Vui lòng mention người chơi!"
+        )
+
+    member = ctx.message.mentions[0]
+
+    if member.bot:
+        return await ctx.send(
+            "❌ Không thể buff bot!"
+        )
 
     if amount is None:
-        return await ctx.send("❌ Thiếu giá trị buff!")
+        return await ctx.send(
+            "❌ Thiếu giá trị buff!"
+        )
 
-    # Quy đổi số lượng lượng buff (Chấp nhận k, m, b)
     try:
-        buff_amount = parse_bet_amount(amount, 0)
-    except ValueError:
-        return await ctx.send("❌ Định dạng số lượng buff không hợp lệ!")
+        buff_amount = parse_bet_amount(
+            amount,
+            0
+        )
+    except:
+        return await ctx.send(
+            "❌ Giá trị không hợp lệ!"
+        )
 
-    player = await get_player(target_member.id)
+    player = await get_player(member.id)
+
     stat = stat.lower()
 
-    valid_stats = {
+    # ================= ALL =================
+
+    if stat == "all":
+
+        player["cash"] += buff_amount
+        player["xp"] += buff_amount
+        player["level"] += buff_amount
+        player["luck"] += buff_amount
+        player["jackpot"] += buff_amount
+        player["lose_streak"] += buff_amount
+
+        await save_player(player)
+
+        embed = discord.Embed(
+            title="🔥 ADMIN BUFF ALL",
+            color=discord.Color.gold()
+        )
+
+        embed.add_field(
+            name="👤 Người nhận",
+            value=member.mention,
+            inline=False
+        )
+
+        embed.add_field(
+            name="➕ Giá trị",
+            value=f"{buff_amount:,}",
+            inline=False
+        )
+
+        await ctx.send(embed=embed)
+
+        return
+
+    # ================= BUFF RIÊNG =================
+
+    valid_stats = [
         "cash",
         "xp",
         "level",
         "luck",
         "jackpot",
-        "win_streak"  # Sửa lại từ dữ liệu cũ lose_streak sang win_streak đồng bộ database
-    }
+        "lose_streak"
+    ]
 
     if stat not in valid_stats:
-        return await ctx.send(f"❌ Chỉ số hợp lệ:\n{', '.join(valid_stats)}")
+        return await ctx.send(
+            "❌ Chỉ số hợp lệ:\n"
+            + ", ".join(valid_stats)
+        )
 
     player[stat] += buff_amount
 
-    # Giới hạn giá trị
+    # Không cho âm
     if stat == "level":
-        player["level"] = max(1, player["level"])
+        player["level"] = max(
+            1,
+            player["level"]
+        )
     else:
-        player[stat] = max(0, player[stat])
+        player[stat] = max(
+            0,
+            player[stat]
+        )
 
     await save_player(player)
 
-    embed = discord.Embed(title="🛠️ ADMIN BUFF", color=discord.Color.green())
-    embed.add_field(name="👤 Người nhận", value=target_member.mention, inline=False)
-    embed.add_field(name="📊 Chỉ số", value=stat, inline=True)
-    embed.add_field(name="➕ Thay đổi", value=f"{buff_amount:+}", inline=True)
-    embed.add_field(name="📈 Giá trị mới", value=player[stat], inline=False)
+    embed = discord.Embed(
+        title="🛠️ ADMIN BUFF",
+        color=discord.Color.green()
+    )
+
+    embed.add_field(
+        name="👤 Người nhận",
+        value=member.mention,
+        inline=False
+    )
+
+    embed.add_field(
+        name="📊 Chỉ số",
+        value=stat,
+        inline=True
+    )
+
+    embed.add_field(
+        name="➕ Giá trị",
+        value=f"{buff_amount:,}",
+        inline=True
+    )
+
+    embed.add_field(
+        name="📈 Giá trị mới",
+        value=player[stat],
+        inline=False
+    )
+
     await ctx.send(embed=embed)
 
 @bot.command()
