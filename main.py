@@ -18,6 +18,8 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 
+data_loaded = False
+
 def add_xp(player, amount):
     player["xp"] += amount
 
@@ -35,46 +37,41 @@ DATA_CHANNEL_ID = 1514179128004313212
 
 player_cache = {}
 
-
 @bot.event
 async def on_ready():
+print("=== LOAD DATA ===")
+async for msg in channel.history(
+    limit=None,
+    oldest_first=True
+):
 
-    bot.add_view(UpgradeView())
+    print("MSG:", msg.content)
 
-    print(f"✅ Đăng nhập: {bot.user}")
+    try:
+        data = json.loads(msg.content)
 
-    channel = bot.get_channel(DATA_CHANNEL_ID)
+        print("JSON:", data)
 
-    if channel is None:
-        print("❌ Không tìm thấy kênh dữ liệu!")
-        return
+        if "user_id" not in data:
+            print("Bỏ qua: không có user_id")
+            continue
 
-    player_cache.clear()
+        data["_message_id"] = msg.id
 
-    async for msg in channel.history(
-        limit=None,
-        oldest_first=True
-    ):
+        player_cache[data["user_id"]] = data
 
-        try:
-            data = json.loads(msg.content)
+        print(
+            f"Load user {data['user_id']}"
+        )
 
-            if "user_id" not in data:
-                continue
+    except Exception as e:
+        print(
+            f"Lỗi đọc dữ liệu: {e}"
+        )
 
-            data["_message_id"] = msg.id
-
-            player_cache[data["user_id"]] = data
-
-        except Exception as e:
-            print(
-                f"Lỗi đọc dữ liệu: {e}"
-            )
-
-    print(
-        f"📂 Đã tải {len(player_cache)} người chơi"
-    )
-
+print(
+    f"📂 Đã tải {len(player_cache)} người chơi"
+)
 
 async def create_player(user_id):
 
@@ -103,11 +100,16 @@ async def create_player(user_id):
 
 async def get_player(user_id):
 
+    while not data_loaded:
+        await asyncio.sleep(1)
+
     if user_id in player_cache:
         return player_cache[user_id]
-    
-    print(f"⚠ Không tìm thấy user {user_id} trong cache")
-    
+
+    print(
+        f"⚠ Tạo mới user {user_id}"
+    )
+
     return await create_player(user_id)
 
 
