@@ -856,6 +856,66 @@ async def buff(ctx, stat=None, target=None, amount=None):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def reset(ctx, member: discord.Member = None):
+
+    if ctx.author.id not in ADMINS:
+        return await ctx.send(
+            "❌ Bạn không có quyền dùng lệnh này!"
+        )
+
+    if member is None:
+        return await ctx.send(
+            "Cách dùng: >reset @user"
+        )
+
+    if member.bot:
+        return await ctx.send(
+            "❌ Không thể reset bot!"
+        )
+
+    player = await get_player(member.id)
+
+    player["cash"] = 1000
+    player["xp"] = 0
+    player["level"] = 1
+    player["luck"] = 0
+    player["jackpot"] = 0
+    player["lose_streak"] = 0
+
+    await save_player(player)
+
+    embed = discord.Embed(
+        title="🔄 RESET NGƯỜI CHƠI",
+        color=discord.Color.red()
+    )
+
+    embed.add_field(
+        name="👤 Người bị reset",
+        value=member.mention,
+        inline=False
+    )
+
+    embed.add_field(
+        name="💰 Cash",
+        value="1000",
+        inline=True
+    )
+
+    embed.add_field(
+        name="⭐ Level",
+        value="1",
+        inline=True
+    )
+
+    embed.add_field(
+        name="📈 XP",
+        value="0",
+        inline=True
+    )
+
+    await ctx.send(embed=embed)
+    
 token = os.getenv("TOKEN")
 
 if token is None:
