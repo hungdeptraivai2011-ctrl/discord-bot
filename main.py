@@ -123,13 +123,24 @@ async def load_all_players():
 
 # ================= LỆNH ROLL =================
 @bot.command()
-async def roll(ctx, amount: int):
-    if amount <= 0:
-        return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
-
+async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'all'
     player = await get_player(ctx.author.id)
-    if player["cash"] < amount:
-        return await ctx.send("❌ Bạn không đủ tiền để đặt cược!")
+    
+    if bet is None:
+        return await ctx.send(f"🎲 **Cách dùng:** `>roll <số_tiền_hoặc_all>`\n*Ví dụ: `>roll 50k` hoặc `>roll all`*")
+        
+    # Xử lý quy đổi tiền cược (Đưa vào số cash hiện tại của player)
+    try:
+        bet_amount = parse_bet_amount(bet, player["cash"])
+    except ValueError:
+        return await ctx.send("❌ Số tiền cược không hợp lệ! Hãy nhập số hoặc chữ viết tắt (`100k`, `all`).")
+        
+    # Kiểm tra điều kiện đặt cược
+    if bet_amount <= 0:
+        return await ctx.send("❌ Số tiền đặt cược phải lớn hơn 0!")
+        
+    if player["cash"] < bet_amount:
+        return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
     # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
     player["cash"] -= amount
@@ -226,13 +237,24 @@ async def roll_error(ctx, error):
 
 # ================= LỆNH SLOT =================
 @bot.command()
-async def slot(ctx, amount: int):
-    if amount <= 0:
-        return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
-
+async def slot(ctx, bet: str = None):
     player = await get_player(ctx.author.id)
-    if player["cash"] < amount:
-        return await ctx.send("❌ Bạn không đủ Cash để đặt cược!")
+    
+    if bet is None:
+        return await ctx.send(f"🎲 **Cách dùng:** `>roll <số_tiền_hoặc_all>`\n*Ví dụ: `>roll 50k` hoặc `>roll all`*")
+        
+    # Xử lý quy đổi tiền cược (Đưa vào số cash hiện tại của player)
+    try:
+        bet_amount = parse_bet_amount(bet, player["cash"])
+    except ValueError:
+        return await ctx.send("❌ Số tiền cược không hợp lệ! Hãy nhập số hoặc chữ viết tắt (`100k`, `all`).")
+        
+    # Kiểm tra điều kiện đặt cược
+    if bet_amount <= 0:
+        return await ctx.send("❌ Số tiền đặt cược phải lớn hơn 0!")
+        
+    if player["cash"] < bet_amount:
+        return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
     # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
     player["cash"] -= amount
@@ -450,47 +472,50 @@ async def toplvl(ctx):
 ADMINS = [1195361246195757118, 1335606447144173610]
 
 @bot.command()
-async def buff(ctx, stat=None, target=None, amount=None):
+async def buff(ctx, target: str = None, amount: str = None):
+    # 1. Kiểm tra quyền Admin
     if ctx.author.id not in ADMINS:
-        return await ctx.send("❌ Bạn không có thẩm quyền sử dụng lệnh này!")
+        return await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
+        
+    if target is None or amount is None:
+        return await ctx.send(
+            "👑 **Cách dùng lệnh Buff Admin:**\n"
+            "🔹 `>buff @User <số_tiền>` -> Buff cho 1 người.\n"
+            "🔹 `>buff all <số_tiền>` -> **Buff cho TOÀN BỘ người chơi** có trong dữ liệu hệ thống.\n"
+            "*Ví dụ: `>buff all 50k` hoặc `>buff @NguyễnVănA 1m`*"
+        )
 
-    if stat is None:
-        return await ctx.send("Cách dùng:\n`>buff cash @user 1000`\n`>buff win_streak @user 5`")
+    # 2. Quy đổi số tiền buff (Hỗ trợ gõ tắt 100k, 1m...)
+    try:
+        # Ở lệnh buff admin, truyền tham số 0 vì không có khái niệm tất tay ví của Admin
+        buff_amount = parse_bet_amount(amount, 0) 
+    except ValueError:
+        return await ctx.send("❌ Định dạng số tiền buff không hợp lệ!")
 
-    if amount is None:
-        try: value = int(target)
-        except: return await ctx.send("❌ Giá trị không hợp lệ!")
-        member = ctx.author
+    # 3. Xử lý trường hợp buff cho TẤT CẢ người chơi (buff all)
+    if target.lower() == "all":
+        # Duyệt qua toàn bộ cache người chơi đang hoạt động để cộng tiền
+        # (Hoặc quét qua danh sách file lưu trữ tùy thuộc vào cách bạn làm DB)
+        count = 0
+        for user_id, player_data in player_cache.items():
+            player_data["cash"] += buff_amount
+            await save_player(player_data)
+            count += 1
+            
+        return await ctx.send(f"🎉 **Chế độ Admin:** Đã phát lộc thành công **+{buff_amount:,} Cash** cho tất cả **{count}** người chơi trong hệ thống!")
+
+    # 4. Xử lý trường hợp buff cho 1 người cụ thể bằng Mention
     else:
+        # Kiểm tra xem có tag đúng người dùng không
         if not ctx.message.mentions:
-            return await ctx.send("❌ Vui lòng gắn thẻ (mention) người nhận!")
+            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để phát toàn server!")
+            
         member = ctx.message.mentions[0]
-        try: value = int(amount)
-        except: return await ctx.send("❌ Giá trị không hợp lệ!")
-
-    if member.bot:
-        return await ctx.send("❌ Không thể can thiệp chỉ số của Bot!")
-
-    player = await get_player(member.id)
-    
-    # Cập nhật mảng chỉ số hợp lệ sau khi đổi sang win_streak
-    valid_stats = ["cash", "xp", "level", "luck", "jackpot", "win_streak"]
-
-    if stat.lower() not in valid_stats:
-        return await ctx.send(f"❌ Chỉ số hợp lệ bao gồm: {', '.join(valid_stats)}")
-
-    player[stat.lower()] += value
-    if player[stat.lower()] < 0:
-        player[stat.lower()] = 0
-
-    await save_player(player)
-
-    embed = discord.Embed(title="🛠️ HỆ THỐNG ADMIN BUFF", color=discord.Color.green())
-    embed.add_field(name="👤 Người nhận", value=member.mention, inline=False)
-    embed.add_field(name="📊 Chỉ số điều chỉnh", value=stat, inline=True)
-    embed.add_field(name="➕ Lượng điều chỉnh", value=value, inline=True)
-    embed.add_field(name="📈 Trạng thái hiện tại", value=player[stat.lower()], inline=False)
-    await ctx.send(embed=embed)
+        player = await get_player(member.id)
+        player["cash"] += buff_amount
+        await save_player(player)
+        
+        return await ctx.send(f"👑 Đã buff thành công **+{buff_amount:,} Cash** vào tài khoản của {member.mention}!")
 
 @bot.command()
 async def reset(ctx, member: discord.Member = None):
@@ -657,32 +682,27 @@ class CashRainView(discord.ui.View):
                 
             await interaction.message.edit(embed=embed, view=self)
 
-def parse_abbreviated_number(val_str: str) -> int:
-    """Chuyển đổi các chuỗi viết tắt như 100k, 2m, 1.5m thành số nguyên int cụ thể."""
+def parse_bet_amount(val_str: str, current_cash: int) -> int:
+    """Quy đổi tiền cược từ chuỗi (100k, 2m, all) thành số nguyên int cụ thể."""
     if val_str is None:
-        return 0
-    
-    # Xóa khoảng trắng và chuyển về chữ thường
+        raise ValueError("Thiếu số tiền cược.")
+        
     val_str = str(val_str).strip().lower()
     
-    # Định nghĩa các hệ số quy đổi
-    multipliers = {
-        'k': 1_000,
-        'm': 1_000_000,
-        'b': 1_000_000_000
-    }
+    # Nếu người dùng chọn tất tay
+    if val_str == "all":
+        return current_cash
+        
+    multipliers = {'k': 1_000, 'm': 1_000_000, 'b': 1_000_000_000}
     
-    # Nếu ký tự cuối cùng nằm trong danh sách viết tắt
     if val_str[-1] in multipliers:
         unit = val_str[-1]
-        number_part = val_str[:-1] # Lấy phần số phía trước chữ k/m/b
+        number_part = val_str[:-1]
         try:
-            # Dùng float để xử lý được cả số thập phân như 1.5m hoặc 2.5k
             return int(float(number_part) * multipliers[unit])
         except ValueError:
-            raise ValueError("Định dạng số không hợp lệ.")
+            raise ValueError("Định dạng tiền cược không hợp lệ.")
             
-    # Nếu không chứa ký tự viết tắt, cố gắng ép kiểu về int thông thường
     return int(float(val_str))
     
 @bot.command()
