@@ -190,7 +190,7 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
     # 2. TRÚNG GIẢI THẮNG THƯỜNG
     elif roll_number <= win_rate:
         multiplier = random.choice([1.2, 1.5, 2.0])
-        reward = int(amount * multiplier)
+        reward = int(bet_amount * multiplier)  # ✅ Đã sửa từ amount -> bet_amount
         
         player["cash"] += reward
         player["win_streak"] += 1
@@ -227,7 +227,7 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
         return await msg.edit(
-            content=f"💀 **THUA CUỘC!**\n\n💸 Bạn đã mất sạch {amount:,} Cash tiền cược.\n📉 Chuỗi thắng bị bẻ gãy!"
+            content=f"💀 **THUA CUỘC!**\n\n💸 Bạn đã mất sạch {bet_amount:,} Cash tiền cược.\n📉 Chuỗi thắng bị bẻ gãy!" # ✅ Đã sửa từ amount -> bet_amount
         )
 
 @roll.error
