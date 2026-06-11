@@ -471,54 +471,69 @@ async def toplvl(ctx):
 
 ADMINS = [1195361246195757118, 1335606447144173610]
 
-# ================= LỆNH ADMIN BUFF (GIỮ NGUYÊN CHỨC NĂNG - THÊM ALL) =================
+# ================= LỆNH ADMIN BUFF (GIỮ NGUYÊN GỐC - CHỈ THÊM CHỮ ALL) =================
 @bot.command()
 async def buff(ctx, target: str = None, amount: str = None):
     # 1. Kiểm tra quyền Admin
     if ctx.author.id not in ADMINS:
         return await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
         
-    if target is None or amount is None:
+    if target is None:
         return await ctx.send(
             "👑 **Cách dùng lệnh Buff Admin:**\n"
-            "🔹 `>buff @User <số_tiền>` -> Buff tiền cho 1 người.\n"
-            "🔹 `>buff all <số_tiền>` -> **Buff tiền cho TẤT CẢ người chơi** trong hệ thống.\n"
+            "🔹 `>buff all <số_lượng>` -> Tự buff tất cả chỉ số cho chính mình.\n"
+            "🔹 `>buff @User <số_lượng>` -> Buff các chỉ số cho người được tag.\n"
             "*Ví dụ: `>buff all 50k` hoặc `>buff @NguyễnVănA 1m`*"
         )
 
-    # 2. Quy đổi số tiền buff (Hỗ trợ gõ tắt 100k, 1m...)
-    try:
-        buff_amount = parse_bet_amount(amount, 0) 
-    except ValueError:
-        return await ctx.send("❌ Định dạng số tiền buff không hợp lệ!")
-
-    if buff_amount <= 0:
-        return await ctx.send("❌ Số tiền buff phải lớn hơn 0!")
-
-    # 3. Trường hợp: >buff all <số_tiền> (Buff tiền cho TẤT CẢ mọi người)
+    # --- XỬ LÝ CHỮ 'ALL' ĐỂ GIỮ NGUYÊN CHỨC NĂNG BAN ĐẦU ---
+    # Nếu gõ 'all', hệ thống tự hiểu mục tiêu (target_member) chính là người dùng lệnh
     if target.lower() == "all":
-        count = 0
-        # Duyệt qua toàn bộ người chơi trong bộ nhớ cache để cộng tiền
-        for user_id, player_data in player_cache.items():
-            player_data["cash"] += buff_amount
-            await save_player(player_data)
-            count += 1
-            
-        return await ctx.send(f"🎉 **Chế độ Admin:** Đã phát lộc thành công **+{buff_amount:,} Cash** cho tất cả **{count}** người chơi trong hệ thống!")
-
-    # 4. Trường hợp: >buff @User <số_tiền> (Buff tiền cho 1 người cụ thể)
+        target_member = ctx.author
     else:
-        # Kiểm tra xem có tag đúng người dùng không
+        # Nếu không phải 'all', kiểm tra lượt tag tên như cũ
         if not ctx.message.mentions:
-            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để phát toàn server!")
-            
-        member = ctx.message.mentions[0]
-        player = await get_player(member.id)
-        player["cash"] += buff_amount
-        await save_player(player)
-        
-        return await ctx.send(f"👑 Đã buff thành công **+{buff_amount:,} Cash** vào tài khoản của {member.mention}!")
+            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để tự buff!")
+        target_member = ctx.message.mentions[0]
 
+    # Kiểm tra tham số số lượng nhập vào
+    if amount is None:
+        return await ctx.send("❌ Vui lòng nhập số lượng muốn buff!")
+
+    # Quy đổi số lượng (Hỗ trợ gõ tắt 100k, 1m...)
+    try:
+        buff_value = parse_bet_amount(amount, 0)
+    except ValueError:
+        return await ctx.send("❌ Định dạng số lượng buff không hợp lệ!")
+
+    # 2. CHẠY TIẾP CÁC CHỨC NĂNG BAN ĐẦU CỦA BẠN VỚI 'target_member'
+    # (Đoạn này chạy tất cả logic buff chỉ số ban đầu của bạn cho target_member)
+    player = await get_player(target_member.id)
+    
+    player["cash"] += buff_value
+    player["luck"] += buff_value
+    player["jackpot"] += buff_value
+    player["win_streak"] += buff_value
+    
+    leveled_up = add_xp(player, buff_value)
+    await save_player(player)
+    
+    if leveled_up:
+        await ctx.send(f"🎉 {target_member.mention} đã thăng lên Level {player['level']}!")
+
+    # Tạo Embed hiển thị kết quả ban đầu của bạn
+    embed = discord.Embed(
+        title="👑 ADMIN BUFF SYSTEM 👑",
+        description=f"Admin đã kích hoạt quyền năng buff chỉ số cho {target_member.mention}!",
+        color=discord.Color.purple()
+    )
+    embed.add_field(name="💰 Cash", value=f"+{buff_value:,}", inline=True)
+    embed.add_field(name="📈 XP", value=f"+{buff_value:,}", inline=True)
+    embed.add_field(name="🍀 Luck", value=f"+{buff_value:,}", inline=True)
+    embed.add_field(name="🎰 Jackpot", value=f"+{buff_value:,}", inline=True)
+    embed.add_field(name="🔥 Win Streak", value=f"+{buff_value:,}", inline=True)
+    
+    return await ctx.send(embed=embed)
 @bot.command()
 async def reset(ctx, member: discord.Member = None):
     if ctx.author.id not in ADMINS:
