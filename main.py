@@ -2,6 +2,7 @@ import random
 import asyncio
 import os
 import json
+from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -59,7 +60,6 @@ async def on_ready():
 
     print(f"📂 Đã tải {len(player_cache)} người chơi vào hệ thống Cache.")
 
-# Khởi tạo người chơi mới với win_streak bằng 0
 async def create_player(user_id):
     channel = bot.get_channel(DATA_CHANNEL_ID)
     data = {
@@ -69,7 +69,8 @@ async def create_player(user_id):
         "level": 1,
         "luck": 0,
         "jackpot": 0,
-        "win_streak": 0
+        "win_streak": 0,
+        "last_daily": ""
     }
     message = await channel.send(json.dumps(data))
     data["_message_id"] = message.id
@@ -509,6 +510,7 @@ async def reset(ctx, member: discord.Member = None):
     player["luck"] = 0
     player["jackpot"] = 0
     player["win_streak"] = 0
+    player["last_daily"] = ""
 
     await save_player(player)
 
@@ -519,6 +521,66 @@ async def reset(ctx, member: discord.Member = None):
     embed.add_field(name="🔥 Chuỗi thắng", value="0", inline=True)
     await ctx.send(embed=embed)
 
+@bot.command()
+async def daily(ctx):
+    player = await get_player(ctx.author.id)
+    
+    # Lấy thời gian hiện tại (Múi giờ UTC)
+    now = datetime.now(timezone.utc)
+    
+    # KIỂM TRA QUYỀN ADMIN: Nếu không phải Admin thì mới bị check 12 giờ
+    if ctx.author.id not in ADMINS:
+        last_daily_str = player.get("last_daily", "")
+        
+        if last_daily_str:
+            last_daily_time = datetime.fromisoformat(last_daily_str)
+            time_passed = now - last_daily_time
+            
+            # Nếu chưa đủ 12 giờ
+            if time_passed < timedelta(hours=12):
+                time_remaining = timedelta(hours=12) - time_passed
+                hours, remainder = divmod(int(time_remaining.total_seconds()), 3600)
+                minutes, seconds = divmod(remainder, 60)
+                
+                return await ctx.send(
+                    f"❌ **{ctx.author.display_name}** ơi, bạn đã điểm danh rồi!\n"
+                    f"⏳ Hãy quay lại sau: **{hours} giờ {minutes} phút {seconds} giây** nữa nhé."
+                )
+
+    # Thưởng tiền và EXP khi điểm danh thành công
+    daily_cash = 500  
+    daily_xp = 30     
+    
+    player["cash"] += daily_cash
+    
+    # Cập nhật thời gian điểm danh mới (Admin dùng thì vẫn cập nhật nhưng ván sau không bị check)
+    player["last_daily"] = now.isoformat()
+    
+    # Cộng EXP và kiểm tra lên cấp
+    leveled_up = add_xp(player, daily_xp)
+    await save_player(player)
+    
+    if leveled_up:
+        await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
+    # Tạo giao diện thông báo
+    embed = discord.Embed(
+        title="☀️ ĐIỂM DANH HÀNG NGÀY",
+        description=f"Chúc mừng **{ctx.author.display_name}** đã điểm danh thành công!",
+        color=discord.Color.green()
+    )
+    
+    # Thêm dòng đánh dấu nếu là Admin đang "hack" lệnh
+    if ctx.author.id in ADMINS:
+        embed.description += "\n👑 *(Chế độ Admin: Đã bỏ qua giới hạn 12 giờ)*"
+
+    embed.add_field(name="💰 Tiền thưởng", value=f"+{daily_cash:,} Cash", inline=True)
+    embed.add_field(name="📈 Kinh nghiệm", value=f"+{daily_xp} EXP", inline=True)
+    embed.add_field(name="💳 Ví hiện tại", value=f"{player['cash']:,} Cash", inline=False)
+    embed.set_footer(text="Hẹn gặp lại bạn sau 12 giờ nữa!")
+    
+    await ctx.send(embed=embed)
+    
 if token is None:
     print("❌ Lỗi: Không tìm thấy biến TOKEN trong file .env!")
 else:
