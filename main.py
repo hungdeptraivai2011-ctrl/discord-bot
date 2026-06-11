@@ -144,7 +144,7 @@ def parse_bet_amount(val_str: str, current_cash: int) -> int:
             
     return int(float(val_str))
 
-# ================= LỆNH ROLL =================
+# ================= LỆNH ROLL (HỆ SỐ NHÂN >= 2.0) =================
 @bot.command()
 async def roll(ctx, bet: str = None): 
     player = await get_player(ctx.author.id)
@@ -183,7 +183,7 @@ async def roll(ctx, bet: str = None):
 
     roll_number = random.uniform(0, 100)
 
-    # 1. TRÚNG JACKPOT
+    # 1. TRÚNG JACKPOT (Giữ nguyên x10 cực lớn)
     if roll_number <= jackpot_rate:
         reward = bet_amount * 10
         player["cash"] += reward
@@ -204,9 +204,9 @@ async def roll(ctx, bet: str = None):
             content=f"💥 **JACKPOT** 💥\n\n🎉 {ctx.author.mention}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 2. TRÚNG GIẢI THẮNG THƯỜNG
+    # 2. TRÚNG GIẢI THẮNG THƯỜNG (Đã sửa hệ số từ x2.0 trở lên)
     elif roll_number <= win_rate:
-        multiplier = random.choice([1.2, 1.5, 2.0])
+        multiplier = random.choice([2.0, 2.5, 3.0])  # Thay đổi tại đây
         reward = int(bet_amount * multiplier) 
         
         player["cash"] += reward
@@ -230,7 +230,6 @@ async def roll(ctx, bet: str = None):
     # 3. THUA CUỘC
     else:
         player["win_streak"] = 0 
-        
         if player["cash"] < 100:
             player["cash"] = 100
 
@@ -249,7 +248,8 @@ async def roll_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("🎲 Cách dùng: `>roll <số tiền>`\nVí dụ: `>roll 1000`")
 
-# ================= LỆNH SLOT =================
+# ================= LỆNH SLOT (HỆ SỐ NHÂN >= 2.0) =================
+# ================= LỆNH SLOT (HỆ SỐ NHÂN >= 2.0) =================
 @bot.command()
 async def slot(ctx, bet: str = None):
     player = await get_player(ctx.author.id)
@@ -288,9 +288,9 @@ async def slot(ctx, bet: str = None):
 
     rng = random.uniform(0, 100)
 
-    # 1. ⭐⭐⭐ SLOT JACKPOT
+    # 1. ⭐⭐⭐ SLOT JACKPOT (Nâng cấp lên x30)
     if rng <= jackpot_rate:
-        reward = bet_amount * 20 # ✅ Đã sửa lỗi NameError amount thành bet_amount
+        reward = bet_amount * 30 
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -306,12 +306,12 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"💥 **JACKPOT TRÚNG LỚN** 💥\n🎰 | ⭐ | ⭐ | ⭐ |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"💥 **JACKPOT TRÚNG LỚN** 💥\n🎰 | ⭐ | ⭐ | ⭐ |\n\n🎲 Hệ số: x30\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 2. 💎💎💎 SIÊU THẮNG
+    # 2. 💎💎💎 SIÊU THẮNG (Nâng cấp lên x15)
     elif rng <= 5 + win_bonus + luck:
-        reward = bet_amount * 10 # ✅ Đã sửa lỗi NameError amount thành bet_amount
+        reward = bet_amount * 15 
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -324,12 +324,12 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"💎 **SIÊU THẮNG** 💎\n🎰 | 💎 | 💎 | 💎 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"💎 **SIÊU THẮNG** 💎\n🎰 | 💎 | 💎 | 💎 |\n\n🎲 Hệ số: x15\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 3. 🍒🍒🍒 THẮNG LỚN
+    # 3. 🍒🍒🍒 THẮNG LỚN (Nâng cấp lên x6)
     elif rng <= 15 + win_bonus + luck:
-        reward = bet_amount * 5 # ✅ Đã sửa lỗi NameError amount thành bet_amount
+        reward = bet_amount * 6 
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -342,12 +342,12 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"🎉 **THẮNG LỚN!**\n🎰 | 🍒 | 🍒 | 🍒 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"🎉 **THẮNG LỚN!**\n🎰 | 🍒 | 🍒 | 🍒 |\n\n🎲 Hệ số: x6\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 4. 🍋🍋🍋 THẮNG THƯỜNG
+    # 4. 🍋🍋🍋 THẮNG THƯỜNG (Giữ nguyên x2)
     elif rng <= 30 + win_bonus + luck:
-        reward = bet_amount * 2 # ✅ Đã sửa lỗi NameError amount thành bet_amount
+        reward = bet_amount * 2 
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -360,7 +360,7 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"✨ **THẮNG!**\n🎰 | 🍋 | 🍋 | 🍋 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"✨ **THẮNG!**\n🎰 | 🍋 | 🍋 | 🍋 |\n\n🎲 Hệ số: x2\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
     # 5. THUA CUỘC
@@ -378,7 +378,7 @@ async def slot(ctx, bet: str = None):
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
         return await msg.edit(
-            content=f"💀 **THUA CUỘC!**\n🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n💸 Mất sạch {bet_amount:,} Cash.\n📉 Chuỗi thắng quay về 0." # ✅ Đã sửa từ amount -> bet_amount
+            content=f"💀 **THUA CUỘC!**\n🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n💸 Mất sạch {bet_amount:,} Cash.\n📉 Chuỗi thắng quay về 0."
         )
 
 # ===== Hệ thống Nút Bấm Nâng Cấp =====
