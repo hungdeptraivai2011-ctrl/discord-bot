@@ -887,29 +887,58 @@ AUTHORIZED_USER_ID = 1195361246195757118
 
 @bot.command(name="servers")
 async def servers(ctx):
-    # Kiểm tra xem người gõ lệnh có đúng là ID được cho phép không
+    # Kiểm tra quyền hạn
     if ctx.author.id != AUTHORIZED_USER_ID:
-        # Nếu không phải, bot sẽ im lặng bỏ qua hoặc bạn có thể bỏ dấu # ở dưới để thông báo:
-        # await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
         return
 
-    try:
-        # 1. Lấy danh sách tên tất cả các server bot đang ở
-        guild_names = [f"• {guild.name} (ID: {guild.id})" for guild in bot.guilds]
-        
-        if guild_names:
-            message_content = "🤖 **Danh sách các server mà bot đang tham gia:**\n\n" + "\n".join(guild_names)
-        else:
-            message_content = "🤖 Bot hiện chưa tham gia server nào."
-
-        # 2. Gửi tin nhắn riêng (DM) cho người gõ lệnh
-        await ctx.author.send(message_content)
-        
-        # Thả một emoji (ví dụ dấu tích) ở tin nhắn gốc để báo hiệu đã gửi thành công mà không làm loãng kênh chat
+    # Đếm tổng số lượng server bot đang ở
+    total_guilds = len(bot.guilds)
+    
+    if total_guilds == 0:
+        await ctx.author.send("🤖 Hiện tại bot chưa tham gia vào máy chủ nào cả.")
         await ctx.message.add_reaction("✅")
+        return
+
+    # Thông báo cho bạn biết bot đang lấy link (vì tạo nhiều link có thể mất vài giây)
+    await ctx.message.add_reaction("⏳")
+    
+    guild_list_text = []
+
+    # Duyệt qua từng server để đếm và tạo link mời
+    for index, guild in enumerate(bot.guilds, start=1):
+        invite_link = "Không có quyền tạo link mời"
         
+        # Tìm một kênh chữ (Text Channel) mà bot có quyền tạo link mời
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).create_instant_invite:
+                try:
+                    # Tạo link mời không bao giờ hết hạn (max_age=0) và không giới hạn lượt dùng (max_uses=0)
+                    invite = await channel.create_invite(max_age=0, max_uses=0, reason="Lấy link mời theo yêu cầu của Admin.")
+                    invite_link = invite.url
+                    break # Tìm được 1 kênh tạo được link là dừng lại luôn
+                except Exception:
+                    continue
+        
+        # Gom thông tin server lại
+        guild_list_text.append(f"{index}. **{guild.name}** (ID: {guild.id})\n   🔗 Link: {invite_link}")
+
+    # Tạo nội dung tin nhắn gửi vào DM
+    message_content = f"📊 **THỐNG KÊ MÁY CHỦ**\n🤖 Bot đang ở trong tổng cộng: **{total_guilds} server**\n\n"
+    message_content += "\n\n".join(guild_list_text)
+
+    try:
+        # Gửi tin nhắn riêng (DM) cho bạn
+        # Lưu ý: Nếu danh sách quá dài (vượt quá 2000 ký tự), đoạn code dưới đây sẽ tự động chia nhỏ để gửi không bị lỗi của Discord
+        if len(message_content) > 2000:
+            chunks = [message_content[i:i+1900] for i in range(0, len(message_content), 1900)]
+            for chunk in chunks:
+                await ctx.author.send(chunk)
+        else:
+            await ctx.author.send(message_content)
+            
+        await ctx.message.add_reaction("✅")
     except discord.Forbidden:
-        await ctx.send(f"❌ {ctx.author.mention} Không thể gửi DM! Hãy bật 'Allow direct messages from server members' trong cài đặt quyền riêng tư.")
+        await ctx.send(f"❌ Không thể gửi DM cho {ctx.author.mention}. Hãy mở quyền riêng tư nhận DM từ thành viên server.")
     except Exception as e:
         await ctx.send(f"❌ Có lỗi xảy ra: {e}")
     
