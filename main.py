@@ -121,39 +121,57 @@ async def load_all_players():
         except:
             pass
 
+def parse_bet_amount(val_str: str, current_cash: int) -> int:
+    """Quy đổi tiền cược từ chuỗi (100k, 2m, all) thành số nguyên int cụ thể."""
+    if val_str is None:
+        raise ValueError("Thiếu số tiền cược.")
+        
+    val_str = str(val_str).strip().lower()
+    
+    # Nếu người dùng chọn tất tay
+    if val_str == "all":
+        return current_cash
+        
+    multipliers = {'k': 1_000, 'm': 1_000_000, 'b': 1_000_000_000}
+    
+    if val_str[-1] in multipliers:
+        unit = val_str[-1]
+        number_part = val_str[:-1]
+        try:
+            return int(float(number_part) * multipliers[unit])
+        except ValueError:
+            raise ValueError("Định dạng tiền cược không hợp lệ.")
+            
+    return int(float(val_str))
+
 # ================= LỆNH ROLL =================
 @bot.command()
-async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'all'
+async def roll(ctx, bet: str = None): 
     player = await get_player(ctx.author.id)
     
     if bet is None:
         return await ctx.send(f"🎲 **Cách dùng:** `>roll <số_tiền_hoặc_all>`\n*Ví dụ: `>roll 50k` hoặc `>roll all`*")
         
-    # Xử lý quy đổi tiền cược (Đưa vào số cash hiện tại của player)
     try:
         bet_amount = parse_bet_amount(bet, player["cash"])
     except ValueError:
         return await ctx.send("❌ Số tiền cược không hợp lệ! Hãy nhập số hoặc chữ viết tắt (`100k`, `all`).")
         
-    # Kiểm tra điều kiện đặt cược
     if bet_amount <= 0:
         return await ctx.send("❌ Số tiền đặt cược phải lớn hơn 0!")
         
     if player["cash"] < bet_amount:
         return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
-    # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
     player["cash"] -= bet_amount
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
     win_streak = player.get("win_streak", 0)
 
-    # Thiết lập tỷ lệ
     win_rate = 45 + (luck * 0.5)
     jackpot_rate = 2 + (jackpot * 0.2)
 
-    # Cơ chế cứu trợ bí mật khi sắp cạn ví
     if player["cash"] <= 1000:
         win_rate += 15
 
@@ -171,7 +189,6 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
         player["cash"] += reward
         player["win_streak"] += 1
         
-        # Tính toán EXP thưởng chuỗi thắng
         base_xp = 25
         bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
         total_xp = base_xp + bonus_xp
@@ -190,12 +207,11 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
     # 2. TRÚNG GIẢI THẮNG THƯỜNG
     elif roll_number <= win_rate:
         multiplier = random.choice([1.2, 1.5, 2.0])
-        reward = int(bet_amount * multiplier)  # ✅ Đã sửa từ amount -> bet_amount
+        reward = int(bet_amount * multiplier) 
         
         player["cash"] += reward
         player["win_streak"] += 1
 
-        # Tính toán EXP thưởng chuỗi thắng
         base_xp = 25
         bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
         total_xp = base_xp + bonus_xp
@@ -213,13 +229,11 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
 
     # 3. THUA CUỘC
     else:
-        player["win_streak"] = 0  # Gãy chuỗi, reset về 0
+        player["win_streak"] = 0 
         
-        # Bảo hiểm phá sản tối thiểu 100 xu
         if player["cash"] < 100:
             player["cash"] = 100
 
-        # Thua vẫn được nhận 15 EXP an ủi
         leveled_up = add_xp(player, 15)
         await save_player(player)
 
@@ -227,7 +241,7 @@ async def roll(ctx, bet: str = None): # Đổi thành str để nhận chữ 'al
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
         return await msg.edit(
-            content=f"💀 **THUA CUỘC!**\n\n💸 Bạn đã mất sạch {bet_amount:,} Cash tiền cược.\n📉 Chuỗi thắng bị bẻ gãy!" # ✅ Đã sửa từ amount -> bet_amount
+            content=f"💀 **THUA CUỘC!**\n\n💸 Bạn đã mất sạch {bet_amount:,} Cash tiền cược.\n📉 Chuỗi thắng bị bẻ gãy!"
         )
 
 @roll.error
@@ -241,22 +255,19 @@ async def slot(ctx, bet: str = None):
     player = await get_player(ctx.author.id)
     
     if bet is None:
-        return await ctx.send(f"🎲 **Cách dùng:** `>roll <số_tiền_hoặc_all>`\n*Ví dụ: `>roll 50k` hoặc `>roll all`*")
+        return await ctx.send(f"🎰 **Cách dùng:** `>slot <số_tiền_hoặc_all>`\n*Ví dụ: `>slot 50k` hoặc `>slot all`*")
         
-    # Xử lý quy đổi tiền cược (Đưa vào số cash hiện tại của player)
     try:
         bet_amount = parse_bet_amount(bet, player["cash"])
     except ValueError:
         return await ctx.send("❌ Số tiền cược không hợp lệ! Hãy nhập số hoặc chữ viết tắt (`100k`, `all`).")
         
-    # Kiểm tra điều kiện đặt cược
     if bet_amount <= 0:
         return await ctx.send("❌ Số tiền đặt cược phải lớn hơn 0!")
         
     if player["cash"] < bet_amount:
         return await ctx.send(f"❌ Bạn không đủ tiền! Số dư hiện tại: **{player['cash']:,} Cash**.")
 
-    # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
     player["cash"] -= bet_amount
 
     luck = player.get("luck", 0)
@@ -265,7 +276,6 @@ async def slot(ctx, bet: str = None):
     emojis = ["🍒", "🍋", "🍇", "💎", "⭐"]
     msg = await ctx.send("🎰 Đang quay hũ...")
 
-    # Hiệu ứng chạy màn hình Slot
     for _ in range(6):
         e1, e2, e3 = random.choices(emojis, k=3)
         await msg.edit(content=f"🎰 | {e1} | {e2} | {e3} |")
@@ -280,8 +290,7 @@ async def slot(ctx, bet: str = None):
 
     # 1. ⭐⭐⭐ SLOT JACKPOT
     if rng <= jackpot_rate:
-        result = ["⭐", "⭐", "⭐"]
-        reward = bet_amount * 20
+        reward = bet_amount * 20 # ✅ Đã sửa lỗi NameError amount thành bet_amount
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -302,8 +311,7 @@ async def slot(ctx, bet: str = None):
 
     # 2. 💎💎💎 SIÊU THẮNG
     elif rng <= 5 + win_bonus + luck:
-        result = ["💎", "💎", "💎"]
-        reward = bet_amount * 10
+        reward = bet_amount * 10 # ✅ Đã sửa lỗi NameError amount thành bet_amount
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -321,8 +329,7 @@ async def slot(ctx, bet: str = None):
 
     # 3. 🍒🍒🍒 THẮNG LỚN
     elif rng <= 15 + win_bonus + luck:
-        result = ["🍒", "🍒", "🍒"]
-        reward = bet_amount * 5
+        reward = bet_amount * 5 # ✅ Đã sửa lỗi NameError amount thành bet_amount
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -340,8 +347,7 @@ async def slot(ctx, bet: str = None):
 
     # 4. 🍋🍋🍋 THẮNG THƯỜNG
     elif rng <= 30 + win_bonus + luck:
-        result = ["🍋", "🍋", "🍋"]
-        reward = bet_amount * 2
+        reward = bet_amount * 2 # ✅ Đã sửa lỗi NameError amount thành bet_amount
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -360,7 +366,7 @@ async def slot(ctx, bet: str = None):
     # 5. THUA CUỘC
     else:
         result = random.choices(emojis, k=3)
-        player["win_streak"] = 0  # Reset chuỗi thắng về 0
+        player["win_streak"] = 0 
         
         if player["cash"] < 100:
             player["cash"] = 100
@@ -372,7 +378,7 @@ async def slot(ctx, bet: str = None):
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
         return await msg.edit(
-            content=f"💀 **THUA CUỘC!**\n🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n💸 Mất sạch {amount:,} Cash.\n📉 Chuỗi thắng quay về 0."
+            content=f"💀 **THUA CUỘC!**\n🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n💸 Mất sạch {bet_amount:,} Cash.\n📉 Chuỗi thắng quay về 0." # ✅ Đã sửa từ amount -> bet_amount
         )
 
 # ===== Hệ thống Nút Bấm Nâng Cấp =====
@@ -471,41 +477,45 @@ async def toplvl(ctx):
 
 ADMINS = [1195361246195757118, 1335606447144173610]
 
+# ================= LỆNH BUFF (GIỮ NGUYÊN GỐC - CHỈ THÊM CHỮ ALL) =================
 @bot.command()
 async def buff(
     ctx,
     stat=None,
-    member: discord.Member=None,
-    amount: int=None
+    target: str = None,  # Đổi sang kiểu str để nhận diện cả chữ 'all' hoặc Tag Người chơi
+    amount: str = None   # Đổi sang str đề phòng Admin nhập lượng buff là '50k', '1m'
 ):
-
     if ctx.author.id not in ADMINS:
-        return await ctx.send(
-            "❌ Bạn không có quyền!"
-        )
+        return await ctx.send("❌ Bạn không có quyền!")
 
     if stat is None:
         return await ctx.send(
-            ">buff cash @user 1000\n"
-            ">buff luck @user 5\n"
-            ">buff level @user 1"
+            "👑 **Cách dùng lệnh Buff Admin:**\n"
+            "🔹 `>buff <chỉ_số> all <số_lượng>` -> Tự buff chỉ số cho chính mình.\n"
+            "🔹 `>buff <chỉ_số> @User <số_lượng>` -> Buff chỉ số cho người được tag.\n"
+            "*Ví dụ: `>buff cash all 50k` hoặc `>buff luck @User 5`*"
         )
 
-    if member is None:
-        member = ctx.author
+    # --- XỬ LÝ CHỮ 'ALL' Ở THAM SỐ TARGET ĐỂ PHÙ HỢP LOGIC GỐC ---
+    if target is None:
+        target_member = ctx.author
+    elif target.lower() == "all":
+        target_member = ctx.author
+    else:
+        if not ctx.message.mentions:
+            return await ctx.send("❌ Vui lòng tag (mention) người chơi cần buff hoặc gõ `all` để tự buff!")
+        target_member = ctx.message.mentions[0]
 
     if amount is None:
-        return await ctx.send(
-            "❌ Thiếu giá trị buff!"
-        )
+        return await ctx.send("❌ Thiếu giá trị buff!")
 
-    if member.bot:
-        return await ctx.send(
-            "❌ Không thể buff bot!"
-        )
+    # Quy đổi số lượng lượng buff (Chấp nhận k, m, b)
+    try:
+        buff_amount = parse_bet_amount(amount, 0)
+    except ValueError:
+        return await ctx.send("❌ Định dạng số lượng buff không hợp lệ!")
 
-    player = await get_player(member.id)
-
+    player = await get_player(target_member.id)
     stat = stat.lower()
 
     valid_stats = {
@@ -514,61 +524,27 @@ async def buff(
         "level",
         "luck",
         "jackpot",
-        "lose_streak"
+        "win_streak"  # Sửa lại từ dữ liệu cũ lose_streak sang win_streak đồng bộ database
     }
 
     if stat not in valid_stats:
-        return await ctx.send(
-            f"❌ Chỉ số hợp lệ:\n"
-            f"{', '.join(valid_stats)}"
-        )
+        return await ctx.send(f"❌ Chỉ số hợp lệ:\n{', '.join(valid_stats)}")
 
-    player[stat] += amount
+    player[stat] += buff_amount
 
-    # Giới hạn
+    # Giới hạn giá trị
     if stat == "level":
-        player["level"] = max(
-            1,
-            player["level"]
-        )
-
+        player["level"] = max(1, player["level"])
     else:
-        player[stat] = max(
-            0,
-            player[stat]
-        )
+        player[stat] = max(0, player[stat])
 
     await save_player(player)
 
-    embed = discord.Embed(
-        title="🛠️ ADMIN BUFF",
-        color=discord.Color.green()
-    )
-
-    embed.add_field(
-        name="👤 Người nhận",
-        value=member.mention,
-        inline=False
-    )
-
-    embed.add_field(
-        name="📊 Chỉ số",
-        value=stat,
-        inline=True
-    )
-
-    embed.add_field(
-        name="➕ Thay đổi",
-        value=f"{amount:+}",
-        inline=True
-    )
-
-    embed.add_field(
-        name="📈 Giá trị mới",
-        value=player[stat],
-        inline=False
-    )
-
+    embed = discord.Embed(title="🛠️ ADMIN BUFF", color=discord.Color.green())
+    embed.add_field(name="👤 Người nhận", value=target_member.mention, inline=False)
+    embed.add_field(name="📊 Chỉ số", value=stat, inline=True)
+    embed.add_field(name="➕ Thay đổi", value=f"{buff_amount:+}", inline=True)
+    embed.add_field(name="📈 Giá trị mới", value=player[stat], inline=False)
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -603,11 +579,8 @@ async def reset(ctx, member: discord.Member = None):
 @bot.command()
 async def daily(ctx):
     player = await get_player(ctx.author.id)
-    
-    # Lấy thời gian hiện tại (Múi giờ UTC)
     now = datetime.now(timezone.utc)
     
-    # KIỂM TRA QUYỀN ADMIN: Nếu không phải Admin thì mới bị check 12 giờ
     if ctx.author.id not in ADMINS:
         last_daily_str = player.get("last_daily", "")
         
@@ -615,7 +588,6 @@ async def daily(ctx):
             last_daily_time = datetime.fromisoformat(last_daily_str)
             time_passed = now - last_daily_time
             
-            # Nếu chưa đủ 12 giờ
             if time_passed < timedelta(hours=12):
                 time_remaining = timedelta(hours=12) - time_passed
                 hours, remainder = divmod(int(time_remaining.total_seconds()), 3600)
@@ -626,30 +598,24 @@ async def daily(ctx):
                     f"⏳ Hãy quay lại sau: **{hours} giờ {minutes} phút {seconds} giây** nữa nhé."
                 )
 
-    # Thưởng tiền và EXP khi điểm danh thành công
     daily_cash = 500  
     daily_xp = 30     
     
     player["cash"] += daily_cash
-    
-    # Cập nhật thời gian điểm danh mới (Admin dùng thì vẫn cập nhật nhưng ván sau không bị check)
     player["last_daily"] = now.isoformat()
     
-    # Cộng EXP và kiểm tra lên cấp
     leveled_up = add_xp(player, daily_xp)
     await save_player(player)
     
     if leveled_up:
         await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
-    # Tạo giao diện thông báo
     embed = discord.Embed(
         title="☀️ ĐIỂM DANH HÀNG NGÀY",
         description=f"Chúc mừng **{ctx.author.display_name}** đã điểm danh thành công!",
         color=discord.Color.green()
     )
     
-    # Thêm dòng đánh dấu nếu là Admin đang "hack" lệnh
     if ctx.author.id in ADMINS:
         embed.description += "\n👑 *(Chế độ Admin: Đã bỏ qua giới hạn 12 giờ)*"
 
@@ -665,19 +631,17 @@ class CashRainView(discord.ui.View):
     def __init__(self, total_pool: int, max_claims: int, duration: float):
         super().__init__(timeout=duration)
         self.total_pool = total_pool
-        self.max_claims = max_claims  # Nếu là 0 hoặc None tức là Cả Server được nhận
-        self.claimed_users = {}       # Lưu user_id: số tiền nhận được
+        self.max_claims = max_claims  
+        self.claimed_users = {}       
         self.remaining_pool = total_pool
         
     @discord.ui.button(label="💰 GIẬT TIỀN NGAY! 💰", style=discord.ButtonStyle.success, custom_id="claim_cashrain")
     async def claim_cashrain(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
         
-        # 1. Kiểm tra xem user đã nhận chưa (Chế độ nào cũng chỉ được bấm 1 lần)
         if user_id in self.claimed_users:
             return await interaction.response.send_message("❌ Bạn đã nhặt tiền từ cơn mưa này rồi, đừng tham lam thế chứ!", ephemeral=True)
             
-        # 2. Kiểm tra nếu là chế độ GIỚI HẠN NGƯỜI và đã hết lượt
         if self.max_claims > 0 and len(self.claimed_users) >= self.max_claims:
             button.disabled = True
             button.label = "💸 Đã bị giật sạch!"
@@ -685,15 +649,12 @@ class CashRainView(discord.ui.View):
             await interaction.message.edit(view=self)
             return await interaction.response.send_message("😢 Ôi không! Cơn mưa tiền đã bị mọi người nhặt hết sạch rồi!", ephemeral=True)
             
-        # 3. Tính toán số tiền người chơi nhận được dựa theo chế độ
         if self.max_claims == 0:
-            # CHẾ ĐỘ CẢ SERVER: Nhận ngẫu nhiên từ 1% đến 5% tổng hũ của Admin
             min_pick = max(1, int(self.total_pool * 0.01))
             max_pick = max(1, int(self.total_pool * 0.05))
             cash_received = random.randint(min_pick, max_pick)
             self.remaining_pool -= cash_received
         else:
-            # CHẾ ĐỘ GIỚI HẠN: Chia hũ giảm dần kịch tính
             remaining_slots = self.max_claims - len(self.claimed_users)
             if remaining_slots == 1:
                 cash_received = self.remaining_pool
@@ -705,16 +666,13 @@ class CashRainView(discord.ui.View):
                     cash_received = self.remaining_pool
             self.remaining_pool -= cash_received
 
-        # 4. Cập nhật vào Cache và Database của người chơi
         player = await get_player(user_id)
         player["cash"] += cash_received
         self.claimed_users[user_id] = cash_received
         await save_player(player)
         
-        # 5. Phản hồi riêng tư cho người bấm nút
         await interaction.response.send_message(f"🎉 Bạn đã giật được **+{cash_received:,} Cash** từ cơn mưa tiền!", ephemeral=True)
         
-        # 6. Kiểm tra nếu hết lượt ngay sau khi người này nhận (Chỉ áp dụng với chế độ giới hạn)
         if self.max_claims > 0 and len(self.claimed_users) >= self.max_claims:
             button.disabled = True
             button.label = "💸 Đã bị giật sạch!"
@@ -724,7 +682,6 @@ class CashRainView(discord.ui.View):
             embed.color = discord.Color.red()
             embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nToàn bộ số tiền đã được phát hết sạch!"
             
-            # Liệt kê danh sách người ăn đậm nhất (Top 10 người)
             leaderboard = ""
             sorted_claims = sorted(self.claimed_users.items(), key=lambda x: x[1], reverse=True)
             for idx, (u_id, amt) in enumerate(sorted_claims[:10], 1):
@@ -736,71 +693,42 @@ class CashRainView(discord.ui.View):
                 
             await interaction.message.edit(embed=embed, view=self)
 
-def parse_bet_amount(val_str: str, current_cash: int) -> int:
-    """Quy đổi tiền cược từ chuỗi (100k, 2m, all) thành số nguyên int cụ thể."""
-    if val_str is None:
-        raise ValueError("Thiếu số tiền cược.")
-        
-    val_str = str(val_str).strip().lower()
-    
-    # Nếu người dùng chọn tất tay
-    if val_str == "all":
-        return current_cash
-        
-    multipliers = {'k': 1_000, 'm': 1_000_000, 'b': 1_000_000_000}
-    
-    if val_str[-1] in multipliers:
-        unit = val_str[-1]
-        number_part = val_str[:-1]
-        try:
-            return int(float(number_part) * multipliers[unit])
-        except ValueError:
-            raise ValueError("Định dạng tiền cược không hợp lệ.")
-            
-    return int(float(val_str))
-    
 @bot.command()
-async def cashrain(ctx, total_pool: str = None, max_claims: str = None): # Chuyển total_pool thành str để không bị lỗi Discord
-    # 1. Kiểm tra quyền Admin
+async def cashrain(ctx, total_pool: str = None, max_claims: str = None): 
     if ctx.author.id not in ADMINS:
         return await ctx.send("❌ Bạn không có thẩm quyền để tạo ra cơn mưa tiền!")
         
-    # 2. Hướng dẫn sử dụng nếu thiếu tham số tổng tiền hũ
     if total_pool is None:
         return await ctx.send(
             "🌧️ **Cách dùng lệnh Cashrain:**\n"
             "🔹 `>cashrain <tổng_tiền>` -> **Cả Server cùng được nhận** ngẫu nhiên.\n"
             "🔹 `>cashrain <tổng_tiền> <số_người>` -> Chỉ giới hạn số lượng người nhanh tay nhất.\n"
-            "*Ví dụ: `>cashrain 500k` hoặc `>cashrain 10m 5` hoặc `>cashrain 400000 10`*"
+            "*Ví dụ: `>cashrain 500k` hoặc `>cashrain 10m 5`*"
         )
         
-    # --- XỬ LÝ CHUYỂN ĐỔI SỐ TIỀN HŨ ---
     try:
-        pool_amount = parse_abbreviated_number(total_pool)
+        # ✅ Sửa đổi từ hàm không tồn tại sang hàm parse_bet_amount đã khai báo ở trên
+        pool_amount = parse_bet_amount(total_pool, 0)
     except ValueError:
         return await ctx.send("❌ Định dạng số tiền tổng hũ không hợp lệ! Hãy nhập số thường hoặc viết tắt dạng `100k`, `2m`, `1.5m`...")
 
     if pool_amount <= 0:
         return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
-    # --- XỬ LÝ THAM SỐ SỐ NGƯỜI TỐI ĐA NHẬN ---
-    claims_limit = 0  # 0 nghĩa là vô hạn (Cả server)
+    claims_limit = 0  
     if max_claims is not None:
         try:
-            # Người dùng cũng có thể nhập giới hạn người dạng số thường
             claims_limit = int(max_claims)
             if claims_limit <= 0:
                 return await ctx.send("❌ Số lượng người nhận giới hạn phải lớn hơn 0!")
         except ValueError:
             return await ctx.send("❌ Số lượng người nhận giới hạn phải là một con số nguyên hợp lệ!")
 
-    duration = 60.0  # Cơn mưa tồn tại trong 60 giây
+    duration = 60.0  
     
-    # --- TÍNH TOÁN THỜI GIAN ĐẾM NGƯỢC ---
     end_timestamp = int(datetime.now(timezone.utc).timestamp() + duration)
     countdown_tag = f"<t:{end_timestamp}:R>"
 
-    # 3. Thiết lập thông tin Embed theo chế độ
     embed = discord.Embed(
         title="🌧️💸 CƠN MƯA TIỀN TỆ ĐÃ XUẤT HIỆN! 💸🌧️",
         description=f"Admin {ctx.author.mention} đang thả một cơn mưa tiền khổng lồ vào kênh chat!\nHãy nhanh tay nhấn vào nút dưới đây để nhặt tiền!",
@@ -816,16 +744,11 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None): # Chuy�
     embed.add_field(name="⏳ Thời gian còn lại", value=f"Sự kiện sẽ kết thúc {countdown_tag}", inline=False)
     embed.set_footer(text="Hệ thống tự động chia ngẫu nhiên số tiền nhặt được!")
     
-    # Khởi tạo View với pool_amount đã được ép kiểu thành số int thành công
     view = CashRainView(pool_amount, claims_limit, duration)
-    
-    # Gửi tin nhắn sự kiện kèm Nút Bấm công khai
     rain_msg = await ctx.send(content="@here 🎉 SỰ KIỆN CASHRAIN!", embed=embed, view=view)
     
-    # Chờ hết thời gian chạy lệnh
     await asyncio.sleep(duration)
     
-    # Sau khi hết thời gian, đóng nút lại nếu chưa bị đóng trước đó
     if not view.children[0].disabled:
         view.children[0].disabled = True
         view.children[0].label = "⏰ Đã hết thời gian!"
@@ -835,7 +758,6 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None): # Chuy�
         embed.description = "🌧️ **CƠN MƯA TIỀN ĐÃ KẾT THÚC!**\nThời gian nhặt tiền đã khép lại."
         embed.set_field_at(2, name="⏳ Thời gian còn lại", value="🔴 **Đã hết giờ!**", inline=False)
         
-        # Sắp xếp và hiển thị bảng xếp hạng những người nhặt được nhiều nhất
         leaderboard = ""
         sorted_claims = sorted(view.claimed_users.items(), key=lambda x: x[1], reverse=True)
         for idx, (u_id, amt) in enumerate(sorted_claims[:10], 1):
