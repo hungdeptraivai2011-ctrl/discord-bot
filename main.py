@@ -11,108 +11,57 @@ token = os.getenv("TOKEN")
 
 prefix = ">"
 intents = discord.Intents.all()
-
-intents = discord.Intents.all()
 intents.messages = True
 intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 
-data_loaded = False
-
+# Hàm tính toán cộng EXP và xử lý Lên Cấp
 def add_xp(player, amount):
     player["xp"] += amount
-
     leveled_up = False
-
     while player["xp"] >= player["level"] * 100:
         player["xp"] -= player["level"] * 100
         player["level"] += 1
         leveled_up = True
-
     return leveled_up
 
 DATA_GUILD_ID = 1514179127354069053
 DATA_CHANNEL_ID = 1514179128004313212
-
 player_cache = {}
 
 @bot.event
 async def on_ready():
     bot.add_view(UpgradeView())
-    
-    print(f"✅ Đăng nhập: {bot.user}")
+    print(f"✅ Đăng nhập thành công: {bot.user}")
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
-
     if channel is None:
         print("❌ Không tìm thấy kênh dữ liệu!")
         return
 
     player_cache.clear()
-
-    async for msg in channel.history(
-        limit=None,
-        oldest_first=True
-    ):
-
+    async for msg in channel.history(limit=None, oldest_first=True):
         try:
             data = json.loads(msg.content)
-
             if "user_id" not in data:
                 continue
+            # Chuyển đổi dữ liệu cũ nếu còn sót lose_streak sang win_streak
+            if "lose_streak" in data:
+                data.pop("lose_streak")
+            if "win_streak" not in data:
+                data["win_streak"] = 0
 
             data["_message_id"] = msg.id
-
             player_cache[data["user_id"]] = data
-
         except Exception as e:
-            print(
-                f"Lỗi đọc dữ liệu: {e}"
-            )
+            print(f"Lỗi đọc dữ liệu: {e}")
 
-    print(
-        f"📂 Đã tải {len(player_cache)} người chơi"
-    )
+    print(f"📂 Đã tải {len(player_cache)} người chơi vào hệ thống Cache.")
 
-    print("=== LOAD DATA ===")
-    async for msg in channel.history(
-        limit=None,
-        oldest_first=True
-    ):
-
-        print("MSG:", msg.content)
-
-        try:
-            data = json.loads(msg.content)
-
-            print("JSON:", data)
-
-            if "user_id" not in data:
-                print("Bỏ qua: không có user_id")
-                continue
-
-            data["_message_id"] = msg.id
-
-            player_cache[data["user_id"]] = data
-
-            print(
-                f"Load user {data['user_id']}"
-            )
-
-        except Exception as e:
-            print(
-                f"Lỗi đọc dữ liệu: {e}"
-            )
-
-    print(
-        f"📂 Đã tải {len(player_cache)} người chơi"
-    )
-
+# Khởi tạo người chơi mới với win_streak bằng 0
 async def create_player(user_id):
-
     channel = bot.get_channel(DATA_CHANNEL_ID)
-
     data = {
         "user_id": user_id,
         "cash": 1000,
@@ -120,806 +69,458 @@ async def create_player(user_id):
         "level": 1,
         "luck": 0,
         "jackpot": 0,
-        "lose_streak": 0
+        "win_streak": 0
     }
-
-    message = await channel.send(
-        json.dumps(data)
-    )
-
+    message = await channel.send(json.dumps(data))
     data["_message_id"] = message.id
-
     player_cache[user_id] = data
-
     return data
 
-
 async def get_player(user_id):
-
-    # Cache
     if user_id in player_cache:
         return player_cache[user_id]
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
-
-    # Tìm trong kênh dữ liệu
-    async for msg in channel.history(
-        limit=None,
-        oldest_first=True
-    ):
-
+    async for msg in channel.history(limit=None, oldest_first=True):
         try:
             data = json.loads(msg.content)
-
             if data.get("user_id") == user_id:
-
+                if "win_streak" not in data:
+                    data["win_streak"] = 0
                 data["_message_id"] = msg.id
-
                 player_cache[user_id] = data
-
                 return data
-
         except:
             continue
-
-    # Không tìm thấy -> tạo mới
     return await create_player(user_id)
 
 async def save_player(player):
-
     channel = bot.get_channel(DATA_CHANNEL_ID)
-
     message_id = player["_message_id"]
-
-    message = await channel.fetch_message(
-        message_id
-    )
-
+    message = await channel.fetch_message(message_id)
+    
     save_data = dict(player)
-
     save_data.pop("_message_id")
-
-    await message.edit(
-        content=json.dumps(save_data)
-    )
-
+    
+    await message.edit(content=json.dumps(save_data))
     player_cache[player["user_id"]] = player
 
 async def load_all_players():
-
     channel = bot.get_channel(DATA_CHANNEL_ID)
-
     player_cache.clear()
-
-    async for msg in channel.history(
-        limit=None,
-        oldest_first=True
-    ):
-
+    async for msg in channel.history(limit=None, oldest_first=True):
         try:
             data = json.loads(msg.content)
-
             if "user_id" not in data:
                 continue
-
+            if "win_streak" not in data:
+                data["win_streak"] = 0
             data["_message_id"] = msg.id
-
             player_cache[data["user_id"]] = data
-
         except:
             pass
-            
+
+# ================= LỆNH ROLL =================
 @bot.command()
 async def roll(ctx, amount: int):
     if amount <= 0:
-        return await ctx.send("❌ Số tiền phải lớn hơn 0!")
+        return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
     player = await get_player(ctx.author.id)
-
     if player["cash"] < amount:
-        return await ctx.send("❌ Bạn không đủ tiền!")
+        return await ctx.send("❌ Bạn không đủ tiền để đặt cược!")
+
+    # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
+    player["cash"] -= amount
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
-    lose_streak = player.get("lose_streak", 0)
+    win_streak = player.get("win_streak", 0)
 
-    # Tỉ lệ cơ bản
-    win_rate = 45
-    jackpot_rate = 2
+    # Thiết lập tỷ lệ
+    win_rate = 45 + (luck * 0.5)
+    jackpot_rate = 2 + (jackpot * 0.2)
 
-    # Luck
-    win_rate += luck * 0.5
-
-    # Pity system
-    win_rate += min(lose_streak * 3, 25)
-
-    # Sắp hết tiền
+    # Cơ chế cứu trợ bí mật khi sắp cạn ví
     if player["cash"] <= 1000:
         win_rate += 15
 
-    # Jackpot stat
-    jackpot_rate += jackpot * 0.2
-
     msg = await ctx.send("🎲 Đang lắc xúc xắc...")
-
-    frames = [
-        "🎲 ⚪⚪⚪",
-        "🎲 🔴⚪⚪",
-        "🎲 🔴🔴⚪",
-        "🎲 🔴🔴🔴"
-    ]
-
+    frames = ["🎲 ⚪⚪⚪", "🎲 🔴⚪⚪", "🎲 🔴🔴⚪", "🎲 🔴🔴🔴"]
     for frame in frames:
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(0.6)
         await msg.edit(content=frame)
 
     roll_number = random.uniform(0, 100)
 
-    # JACKPOT
+    # 1. TRÚNG JACKPOT
     if roll_number <= jackpot_rate:
         reward = amount * 10
-
         player["cash"] += reward
-        player["lose_streak"] = 0
-        leveled_up = add_xp(player, 25)
-
-        if leveled_up:
-            await ctx.send(
-                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-            )
-
+        player["win_streak"] += 1
+        
+        # Tính toán EXP thưởng chuỗi thắng
+        base_xp = 25
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
+        
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        if leveled_up:
+            await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"💥 JACKPOT 💥\n\n"
-            f"🎉 {ctx.author.mention}\n"
-            f"💰 +{reward:,} Cash"
+            content=f"💥 **JACKPOT** 💥\n\n🎉 {ctx.author.mention}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # THẮNG
+    # 2. TRÚNG GIẢI THẮNG THƯỜNG
     elif roll_number <= win_rate:
-        multiplier = random.choice([
-            1.2,
-            1.5,
-            2
-        ])
-
+        multiplier = random.choice([1.2, 1.5, 2.0])
         reward = int(amount * multiplier)
-
+        
         player["cash"] += reward
-        player["lose_streak"] = 0
-        leveled_up = add_xp(player, 25)
+        player["win_streak"] += 1
 
-        if leveled_up:
-            await ctx.send(
-                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-            )
+        # Tính toán EXP thưởng chuỗi thắng
+        base_xp = 25
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
 
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        if leveled_up:
+            await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"🎉 THẮNG!\n\n"
-            f"🎲 Hệ số: x{multiplier}\n"
-            f"💰 +{reward:,} Cash"
+            content=f"🎉 **THẮNG!**\n\n🎲 Hệ số: x{multiplier}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # THUA
+    # 3. THUA CUỘC
     else:
-        player["cash"] -= amount
-
+        player["win_streak"] = 0  # Gãy chuỗi, reset về 0
+        
+        # Bảo hiểm phá sản tối thiểu 100 xu
         if player["cash"] < 100:
             player["cash"] = 100
 
-        player["lose_streak"] += 1
-        leveled_up = add_xp(player, 25)
-
-        if leveled_up:
-            await ctx.send(
-                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-            )
-
+        # Thua vẫn được nhận 15 EXP an ủi
+        leveled_up = add_xp(player, 15)
         await save_player(player)
 
+        if leveled_up:
+            await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
         return await msg.edit(
-            content=
-            f"💀 THUA!\n\n"
-            f"💸 -{amount:,} Cash\n"
-            f"🔥 Chuỗi thua: {player['lose_streak']}"
+            content=f"💀 **THUA CUỘC!**\n\n💸 Bạn đã mất sạch {amount:,} Cash tiền cược.\n📉 Chuỗi thắng bị bẻ gãy!"
         )
 
 @roll.error
 async def roll_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(
-            "🎲 Cách dùng: `>roll <số tiền>`\n"
-            "Ví dụ: `>roll 1000`"
-        )
+        await ctx.send("🎲 Cách dùng: `>roll <số tiền>`\nVí dụ: `>roll 1000`")
 
+# ================= LỆNH SLOT =================
 @bot.command()
 async def slot(ctx, amount: int):
     if amount <= 0:
-        return await ctx.send("❌ Số tiền phải lớn hơn 0!")
+        return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
     player = await get_player(ctx.author.id)
-
     if player["cash"] < amount:
-        return await ctx.send("❌ Bạn không đủ Cash!")
+        return await ctx.send("❌ Bạn không đủ Cash để đặt cược!")
+
+    # BẮT ĐẦU TRỪ TIỀN CƯỢC TRƯỚC KHI QUAY
+    player["cash"] -= amount
 
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
-    lose_streak = player.get("lose_streak", 0)
-
+    
     emojis = ["🍒", "🍋", "🍇", "💎", "⭐"]
+    msg = await ctx.send("🎰 Đang quay hũ...")
 
-    msg = await ctx.send("🎰 Đang quay...")
+    # Hiệu ứng chạy màn hình Slot
+    for _ in range(6):
+        e1, e2, e3 = random.choices(emojis, k=3)
+        await msg.edit(content=f"🎰 | {e1} | {e2} | {e3} |")
+        await asyncio.sleep(0.3)
 
-    # Animation
-    for _ in range(8):
-        e1 = random.choice(emojis)
-        e2 = random.choice(emojis)
-        e3 = random.choice(emojis)
-
-        await msg.edit(
-            content=f"🎰 | {e1} | {e2} | {e3} |"
-        )
-
-        await asyncio.sleep(0.4)
-
-    # Tỉ lệ
     jackpot_rate = 1 + (jackpot * 0.3)
-    win_bonus = min(lose_streak * 2, 20)
-
+    win_bonus = 0
     if player["cash"] <= 1000:
         win_bonus += 10
 
     rng = random.uniform(0, 100)
 
-    # ⭐⭐⭐ JACKPOT
+    # 1. ⭐⭐⭐ SLOT JACKPOT
     if rng <= jackpot_rate:
         result = ["⭐", "⭐", "⭐"]
         reward = amount * 20
-
         player["cash"] += reward
-        player["lose_streak"] = 0
-        
-        leveled_up = add_xp(player, 40)
+        player["win_streak"] += 1
 
-        if leveled_up:
-            await ctx.send(
-                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-            )
+        base_xp = 40
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
 
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        if leveled_up:
+            await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"💥 JACKPOT 💥\n"
-            f"🎰 | ⭐ | ⭐ | ⭐ |\n\n"
-            f"💰 +{reward:,} Cash"
+            content=f"💥 **JACKPOT TRÚNG LỚN** 💥\n🎰 | ⭐ | ⭐ | ⭐ |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 💎💎💎
+    # 2. 💎💎💎 SIÊU THẮNG
     elif rng <= 5 + win_bonus + luck:
         result = ["💎", "💎", "💎"]
         reward = amount * 10
-
         player["cash"] += reward
-        player["lose_streak"] = 0
-        player["xp"] += 25
+        player["win_streak"] += 1
 
+        base_xp = 25
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
+
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"💎 SIÊU THẮNG 💎\n"
-            f"🎰 | 💎 | 💎 | 💎 |\n\n"
-            f"💰 +{reward:,} Cash"
+            content=f"💎 **SIÊU THẮNG** 💎\n🎰 | 💎 | 💎 | 💎 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 🍒🍒🍒
+    # 3. 🍒🍒🍒 THẮNG LỚN
     elif rng <= 15 + win_bonus + luck:
         result = ["🍒", "🍒", "🍒"]
         reward = amount * 5
-
         player["cash"] += reward
-        player["lose_streak"] = 0
-        player["xp"] += 15
+        player["win_streak"] += 1
 
+        base_xp = 15
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
+
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"🎉 THẮNG LỚN!\n"
-            f"🎰 | 🍒 | 🍒 | 🍒 |\n\n"
-            f"💰 +{reward:,} Cash"
+            content=f"🎉 **THẮNG LỚN!**\n🎰 | 🍒 | 🍒 | 🍒 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 🍋🍋🍋
+    # 4. 🍋🍋🍋 THẮNG THƯỜNG
     elif rng <= 30 + win_bonus + luck:
         result = ["🍋", "🍋", "🍋"]
         reward = amount * 2
-
         player["cash"] += reward
-        player["lose_streak"] = 0
-        player["xp"] += 10
+        player["win_streak"] += 1
 
+        base_xp = 10
+        bonus_xp = player["win_streak"] * 5 if player["win_streak"] >= 3 else 0
+        total_xp = base_xp + bonus_xp
+
+        leveled_up = add_xp(player, total_xp)
         await save_player(player)
 
+        streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=
-            f"✨ THẮNG!\n"
-            f"🎰 | 🍋 | 🍋 | 🍋 |\n\n"
-            f"💰 +{reward:,} Cash"
+            content=f"✨ **THẮNG!**\n🎰 | 🍋 | 🍋 | 🍋 |\n\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # THUA
+    # 5. THUA CUỘC
     else:
-        result = [
-            random.choice(emojis),
-            random.choice(emojis),
-            random.choice(emojis)
-        ]
-
-        player["cash"] -= amount
-
+        result = random.choices(emojis, k=3)
+        player["win_streak"] = 0  # Reset chuỗi thắng về 0
+        
         if player["cash"] < 100:
             player["cash"] = 100
 
-        player["lose_streak"] += 1
-        leveled_up = add_xp(player, 25)
-
-        if leveled_up:
-            await ctx.send(
-                f"🎉 {ctx.author.mention} đã lên Level {player['level']}!"
-            )
-
+        leveled_up = add_xp(player, 10)
         await save_player(player)
 
+        if leveled_up:
+            await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
+
         return await msg.edit(
-            content=
-            f"💀 THUA!\n"
-            f"🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n"
-            f"💸 -{amount:,} Cash\n"
-            f"🔥 Chuỗi thua: {player['lose_streak']}"
+            content=f"💀 **THUA CUỘC!**\n🎰 | {result[0]} | {result[1]} | {result[2]} |\n\n💸 Mất sạch {amount:,} Cash.\n📉 Chuỗi thắng quay về 0."
         )
 
-# ===== Buttons =====
-
+# ===== Hệ thống Nút Bấm Nâng Cấp =====
 class UpgradeView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(
-        label="🍀 Nâng Luck",
-        style=discord.ButtonStyle.green,
-        custom_id="upgrade_luck"
-    )
-    async def upgrade_luck(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
+    @discord.ui.button(label="🍀 Nâng Luck", style=discord.ButtonStyle.green, custom_id="upgrade_luck")
+    async def upgrade_luck(self, interaction: discord.Interaction, button: discord.ui.Button):
         player = await get_player(interaction.user.id)
-
         cost = (player["luck"] + 1) * 1000
 
         if player["cash"] < cost:
-            return await interaction.response.send_message(
-                f"❌ Cần {cost:,} Cash",
-                ephemeral=True
-            )
+            return await interaction.response.send_message(f"❌ Bạn không đủ tiền! Cần {cost:,} Cash", ephemeral=True)
 
         player["cash"] -= cost
         player["luck"] += 1
-
         await save_player(player)
+        await interaction.response.send_message(f"🍀 Nâng cấp thành công! Chỉ số Luck hiện tại: {player['luck']}", ephemeral=True)
 
-        await interaction.response.send_message(
-            f"🍀 Luck đã tăng lên {player['luck']}",
-            ephemeral=True
-        )
-
-    @discord.ui.button(
-        label="💎 Nâng Jackpot",
-        style=discord.ButtonStyle.blurple,
-        custom_id="upgrade_jackpot"
-    )
-    async def upgrade_jackpot(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
+    @discord.ui.button(label="💎 Nâng Jackpot", style=discord.ButtonStyle.blurple, custom_id="upgrade_jackpot")
+    async def upgrade_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
         player = await get_player(interaction.user.id)
-
         cost = (player["jackpot"] + 1) * 2000
 
         if player["cash"] < cost:
-            return await interaction.response.send_message(
-                f"❌ Cần {cost:,} Cash",
-                ephemeral=True
-            )
+            return await interaction.response.send_message(f"❌ Bạn không đủ tiền! Cần {cost:,} Cash", ephemeral=True)
 
         player["cash"] -= cost
         player["jackpot"] += 1
-
         await save_player(player)
+        await interaction.response.send_message(f"💎 Nâng cấp thành công! Chỉ số Jackpot hiện tại: {player['jackpot']}", ephemeral=True)
 
-        await interaction.response.send_message(
-            f"💎 Jackpot đã tăng lên {player['jackpot']}",
-            ephemeral=True
-        )
-
-
-# ===== START COMMAND =====
-
+# ===== CÁC LỆNH HIỂN THỊ & ADMIN =====
 @bot.command()
 async def start(ctx):
-
     player = await get_player(ctx.author.id)
-
     need_xp = player["level"] * 100
 
-    embed = discord.Embed(
-        title="🎮 THÔNG TIN NGƯỜI CHƠI",
-        color=discord.Color.gold()
-    )
+    embed = discord.Embed(title="🎮 THÔNG TIN NGƯỜI CHƠI", color=discord.Color.gold())
+    embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
+    embed.add_field(name="💰 Cash", value=f"{player['cash']:,}", inline=True)
+    embed.add_field(name="⭐ Level", value=player["level"], inline=True)
+    embed.add_field(name="📈 XP", value=f"{player['xp']}/{need_xp}", inline=True)
+    embed.add_field(name="🍀 Luck", value=player["luck"], inline=True)
+    embed.add_field(name="💎 Jackpot Thêm", value=player["jackpot"], inline=True)
+    embed.add_field(name="🔥 Chuỗi Thắng", value=player.get("win_streak", 0), inline=True)
+    embed.set_footer(text="Nhấn nút bên dưới để tiến hành gia tăng sức mạnh")
 
-    embed.set_author(
-        name=str(ctx.author),
-        icon_url=ctx.author.display_avatar.url
-    )
-
-    embed.add_field(
-        name="💰 Cash",
-        value=f"{player['cash']:,}",
-        inline=True
-    )
-
-    embed.add_field(
-        name="⭐ Level",
-        value=player["level"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="📈 XP",
-        value=f"{player['xp']}/{need_xp}",
-        inline=True
-    )
-
-    embed.add_field(
-        name="🍀 Luck",
-        value=player["luck"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="💎 Jackpot",
-        value=player["jackpot"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="🔥 Chuỗi thua",
-        value=player["lose_streak"],
-        inline=True
-    )
-
-    embed.set_footer(
-        text="Nhấn nút bên dưới để nâng cấp chỉ số"
-    )
-
-    await ctx.send(
-        embed=embed,
-        view=UpgradeView()
-    )
+    await ctx.send(embed=embed, view=UpgradeView())
 
 def get_rank(level):
-
-    if level >= 100:
-        return "👑 Huyền Thoại"
-
-    elif level >= 75:
-        return "💎 Đại Cao Thủ"
-
-    elif level >= 50:
-        return "🔥 Cao Thủ"
-
-    elif level >= 25:
-        return "⚔️ Chiến Binh"
-
-    elif level >= 10:
-        return "⭐ Kẻ Phiêu Lưu"
-
+    if level >= 100: return "👑 Huyền Thoại"
+    elif level >= 75: return "💎 Đại Cao Thủ"
+    elif level >= 50: return "🔥 Cao Thủ"
+    elif level >= 25: return "⚔️ Chiến Binh"
+    elif level >= 10: return "⭐ Kẻ Phiêu Lưu"
     return "🌱 Tân Thủ"
 
 @bot.command()
 async def profile(ctx, member: discord.Member = None):
-
     if member is None:
         member = ctx.author
-
     if member.bot:
-        return await ctx.send(
-            "❌ Không thể xem hồ sơ của bot."
-        )
+        return await ctx.send("❌ Không thể xem hồ sơ của hệ thống Bot.")
 
     player = await get_player(member.id)
-
     need_xp = player["level"] * 100
 
-    embed = discord.Embed(
-        title=f"👤 Hồ sơ của {member.display_name}",
-        color=discord.Color.blue()
-    )
-
-    embed.set_thumbnail(
-        url=member.display_avatar.url
-    )
-
-    embed.add_field(
-        name="💰 Cash",
-        value=f"{player['cash']:,}",
-        inline=True
-    )
-
-    embed.add_field(
-        name="⭐ Level",
-        value=player["level"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="📈 XP",
-        value=f"{player['xp']}/{need_xp}",
-        inline=True
-    )
-
-    embed.add_field(
-        name="🍀 Luck",
-        value=player["luck"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="💎 Jackpot",
-        value=player["jackpot"],
-        inline=True
-    )
-
-    embed.add_field(
-        name="🔥 Chuỗi thua",
-        value=player["lose_streak"],
-        inline=True
-    )
-
-    # Thống kê phụ
-    embed.add_field(
-        name="🏆 Danh hiệu",
-        value=get_rank(player["level"]),
-        inline=False
-    )
-
-    embed.set_footer(
-        text=f"ID: {member.id}"
-    )
+    embed = discord.Embed(title=f"👤 Hồ sơ của {member.display_name}", color=discord.Color.blue())
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.add_field(name="💰 Cash", value=f"{player['cash']:,}", inline=True)
+    embed.add_field(name="⭐ Level", value=player["level"], inline=True)
+    embed.add_field(name="📈 XP", value=f"{player['xp']}/{need_xp}", inline=True)
+    embed.add_field(name="🍀 Luck", value=player["luck"], inline=True)
+    embed.add_field(name="💎 Jackpot", value=player["jackpot"], inline=True)
+    embed.add_field(name="🔥 Chuỗi Thắng", value=player.get("win_streak", 0), inline=True)
+    embed.add_field(name="🏆 Danh hiệu", value=get_rank(player["level"]), inline=False)
+    embed.set_footer(text=f"ID Người dùng: {member.id}")
 
     await ctx.send(embed=embed)
 
 @bot.command()
 async def toplvl(ctx):
-    
     await load_all_players()
-    
-    sorted_players = sorted(
-        player_cache.items(),
-        key=lambda x: (
-            x[1]["level"],
-            x[1]["xp"]
-        ),
-        
-    reverse=True
-)
+    sorted_players = sorted(player_cache.items(), key=lambda x: (x[1]["level"], x[1]["xp"]), reverse=True)
 
     text = ""
-
-    for index, (user_id, data) in enumerate(
-        sorted_players[:10],
-        start=1
-    ):
-
+    for index, (user_id, data) in enumerate(sorted_players[:10], start=1):
         user = bot.get_user(int(user_id))
+        name = user.name if user else f"Người chơi {user_id}"
+        text += f"{index}. **{name}** (Lv.{data['level']} - 🔥 Chuỗi: {data.get('win_streak', 0)})\n"
 
-        if user:
-            name = user.name
-        else:
-            name = f"User {user_id}"
-
-        text += (
-            f"{index}. {name} "
-            f"(Lv.{data['level']})\n"
-        )
-
-    embed = discord.Embed(
-        title="🏆 TOP LEVEL",
-        description=text,
-        color=discord.Color.gold()
-    )
-
+    embed = discord.Embed(title="🏆 BẢNG XẾP HẠNG CAO THỦ (LEVEL)", description=text, color=discord.Color.gold())
     await ctx.send(embed=embed)
 
 ADMINS = [1195361246195757118, 1335606447144173610]
 
 @bot.command()
 async def buff(ctx, stat=None, target=None, amount=None):
-
     if ctx.author.id not in ADMINS:
-        return await ctx.send(
-            "❌ Bạn không có quyền dùng lệnh này!"
-        )
+        return await ctx.send("❌ Bạn không có thẩm quyền sử dụng lệnh này!")
 
     if stat is None:
-        return await ctx.send(
-            "Cách dùng:\n"
-            ">buff cash @user 1000\n"
-            ">buff luck @user 5\n"
-            ">buff level @user 1"
-        )
+        return await ctx.send("Cách dùng:\n`>buff cash @user 1000`\n`>buff win_streak @user 5`")
 
-    # Tự buff
     if amount is None:
-
-        try:
-            value = int(target)
-
-        except:
-            return await ctx.send("❌ Giá trị không hợp lệ!")
-
+        try: value = int(target)
+        except: return await ctx.send("❌ Giá trị không hợp lệ!")
         member = ctx.author
-
     else:
-
         if not ctx.message.mentions:
-            return await ctx.send(
-                "❌ Vui lòng mention người chơi!"
-            )
-
+            return await ctx.send("❌ Vui lòng gắn thẻ (mention) người nhận!")
         member = ctx.message.mentions[0]
-
-        try:
-            value = int(amount)
-
-        except:
-            return await ctx.send("❌ Giá trị không hợp lệ!")
+        try: value = int(amount)
+        except: return await ctx.send("❌ Giá trị không hợp lệ!")
 
     if member.bot:
-        return await ctx.send(
-            "❌ Không thể buff bot!"
-        )
+        return await ctx.send("❌ Không thể can thiệp chỉ số của Bot!")
 
     player = await get_player(member.id)
-
-    valid_stats = [
-        "cash",
-        "xp",
-        "level",
-        "luck",
-        "jackpot",
-        "lose_streak"
-    ]
+    
+    # Cập nhật mảng chỉ số hợp lệ sau khi đổi sang win_streak
+    valid_stats = ["cash", "xp", "level", "luck", "jackpot", "win_streak"]
 
     if stat.lower() not in valid_stats:
-        return await ctx.send(
-            f"❌ Chỉ số hợp lệ:\n"
-            f"{', '.join(valid_stats)}"
-        )
+        return await ctx.send(f"❌ Chỉ số hợp lệ bao gồm: {', '.join(valid_stats)}")
 
     player[stat.lower()] += value
-
     if player[stat.lower()] < 0:
         player[stat.lower()] = 0
 
     await save_player(player)
 
-    embed = discord.Embed(
-        title="🛠️ ADMIN BUFF",
-        color=discord.Color.green()
-    )
-
-    embed.add_field(
-        name="👤 Người nhận",
-        value=member.mention,
-        inline=False
-    )
-
-    embed.add_field(
-        name="📊 Chỉ số",
-        value=stat,
-        inline=True
-    )
-
-    embed.add_field(
-        name="➕ Giá trị",
-        value=value,
-        inline=True
-    )
-
-    embed.add_field(
-        name="📈 Sau buff",
-        value=player[stat.lower()],
-        inline=False
-    )
-
+    embed = discord.Embed(title="🛠️ HỆ THỐNG ADMIN BUFF", color=discord.Color.green())
+    embed.add_field(name="👤 Người nhận", value=member.mention, inline=False)
+    embed.add_field(name="📊 Chỉ số điều chỉnh", value=stat, inline=True)
+    embed.add_field(name="➕ Lượng điều chỉnh", value=value, inline=True)
+    embed.add_field(name="📈 Trạng thái hiện tại", value=player[stat.lower()], inline=False)
     await ctx.send(embed=embed)
 
 @bot.command()
 async def reset(ctx, member: discord.Member = None):
-
     if ctx.author.id not in ADMINS:
-        return await ctx.send(
-            "❌ Bạn không có quyền dùng lệnh này!"
-        )
+        return await ctx.send("❌ Bạn không có quyền hạn dùng lệnh này!")
 
     if member is None:
-        return await ctx.send(
-            "Cách dùng: >reset @user"
-        )
+        return await ctx.send("Cách dùng: `>reset @user`")
 
     if member.bot:
-        return await ctx.send(
-            "❌ Không thể reset bot!"
-        )
+        return await ctx.send("❌ Không thể đặt lại dữ liệu của Bot!")
 
     player = await get_player(member.id)
-
     player["cash"] = 1000
     player["xp"] = 0
     player["level"] = 1
     player["luck"] = 0
     player["jackpot"] = 0
-    player["lose_streak"] = 0
+    player["win_streak"] = 0
 
     await save_player(player)
 
-    embed = discord.Embed(
-        title="🔄 RESET NGƯỜI CHƠI",
-        color=discord.Color.red()
-    )
-
-    embed.add_field(
-        name="👤 Người bị reset",
-        value=member.mention,
-        inline=False
-    )
-
-    embed.add_field(
-        name="💰 Cash",
-        value="1000",
-        inline=True
-    )
-
-    embed.add_field(
-        name="⭐ Level",
-        value="1",
-        inline=True
-    )
-
-    embed.add_field(
-        name="📈 XP",
-        value="0",
-        inline=True
-    )
-
+    embed = discord.Embed(title="🔄 THIẾT LẬP LẠI NGƯỜI CHƠI", color=discord.Color.red())
+    embed.add_field(name="👤 Đối tượng", value=member.mention, inline=False)
+    embed.add_field(name="💰 Cash", value="1,000", inline=True)
+    embed.add_field(name="⭐ Level", value="1", inline=True)
+    embed.add_field(name="🔥 Chuỗi thắng", value="0", inline=True)
     await ctx.send(embed=embed)
-    
-token = os.getenv("TOKEN")
 
 if token is None:
-    print("❌ Không tìm thấy TOKEN!")
+    print("❌ Lỗi: Không tìm thấy biến TOKEN trong file .env!")
 else:
-    print("✅ TOKEN đã được tìm thấy!")
+    print("✅ Đang khởi chạy Bot bằng TOKEN tìm thấy...")
     bot.run(token)
